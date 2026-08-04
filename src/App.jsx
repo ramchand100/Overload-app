@@ -222,7 +222,7 @@ const S = `
   /* HOME */
   .home-scroll{flex:1;overflow-y:auto;padding:14px 18px 24px;display:flex;flex-direction:column;gap:10px}
   .home-scroll::-webkit-scrollbar{display:none}
-  .ws-days{display:flex;gap:2px;padding:2px 0}
+  .ws-days{display:flex;gap:4px;padding:2px 0}
   .ws-day{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
   .ws-day:active{opacity:.7}
   .ws-day-name{font-size:9px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.3px}
@@ -255,6 +255,32 @@ const S = `
   .dc-bar-wrap{height:3px;background:var(--surface2)}
   .dc-bar{height:3px;transition:width .4s ease}
   .add-workout-row{background:var(--white);border:1.5px solid var(--ch);border-radius:17px;padding:14px 17px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font-size:14px;font-weight:600;color:var(--ch);box-shadow:var(--sh)}
+  /* Add Workout Modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:60;display:flex;align-items:flex-end;justify-content:center}
+  .modal-sheet{background:var(--white);border-radius:24px 24px 0 0;width:100%;max-width:390px;padding:20px 20px 44px;max-height:85vh;overflow-y:auto;animation:up .25s ease}
+  .modal-sheet::-webkit-scrollbar{display:none}
+  .modal-handle{width:40px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 20px}
+  .modal-title{font-size:20px;font-weight:800;color:var(--ch);margin-bottom:4px;letter-spacing:-.4px}
+  .modal-sub{font-size:13px;color:var(--ink3);margin-bottom:18px}
+  .modal-split-opt{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:14px 16px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:12px;margin-bottom:8px}
+  .modal-split-opt:active{transform:scale(.99)}
+  .modal-split-opt.disabled{opacity:.35;cursor:not-allowed;pointer-events:none}
+  .modal-split-emoji{font-size:22px;flex-shrink:0}
+  .modal-split-name{font-size:15px;font-weight:700;color:var(--ch)}
+  .modal-split-desc{font-size:12px;color:var(--ink3);margin-top:2px}
+  .modal-split-badge{font-size:10px;font-weight:700;color:var(--orange);background:var(--orange-l);border-radius:20px;padding:2px 8px;margin-left:auto;white-space:nowrap;flex-shrink:0}
+  /* Weekly volume chart */
+  .vol-chart{display:flex;align-items:flex-end;gap:6px;height:80px;padding:0 4px}
+  .vol-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+  .vol-bar{width:100%;border-radius:5px 5px 0 0;background:var(--ch);min-height:4px;transition:height .4s ease}
+  .vol-bar.today{background:var(--orange)}
+  .vol-bar.zero{background:var(--border2);opacity:.4}
+  .vol-day-lbl{font-size:9px;font-weight:600;color:var(--ink3);text-transform:uppercase}
+  .vol-day-lbl.today{color:var(--orange);font-weight:800}
+  /* Exercise search */
+  .ex-search-wrap{position:relative;margin-bottom:12px}
+  .ex-search-inp{width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:11px 14px 11px 36px;font-size:14px;font-family:'Inter',sans-serif;color:var(--ch);outline:none}
+  .ex-search-inp:focus{border-color:var(--ch)}
   /* Session screen */
   .sess-screen{flex:1;display:flex;flex-direction:column;overflow:hidden}
   .sess-topbar{padding:16px 20px 0;display:flex;align-items:center;gap:12px;flex-shrink:0}
@@ -421,7 +447,7 @@ const getExLib=d=>EX_LIB[d]||EX_LIB["Push"];
 const MUSCLE_TAGS={"Bench Press":"Chest","Incline DB Press":"Chest","Decline Bench Press":"Chest","Flat Bench Press":"Chest","Cable Fly":"Chest","Pec Deck":"Chest","Machine Chest Press":"Chest","Dips":"Chest/Tri","Push-ups":"Chest","OHP":"Shoulders","DB Shoulder Press":"Shoulders","Lateral Raise":"Shoulders","Front Raise":"Shoulders","Rear Delt Fly":"Rear Delts","Arnold Press":"Shoulders","Cable Lateral Raise":"Shoulders","Pull-ups":"Back/Bi","Chin-ups":"Back/Bi","Barbell Row":"Back","Cable Row":"Back","Seated Row":"Back","Lat Pulldown":"Back","Single Arm DB Row":"Back","Face Pulls":"Rear Delts","Shrugs":"Traps","Bicep Curl":"Biceps","DB Curl":"Biceps","Hammer Curl":"Biceps","Incline DB Curl":"Biceps","Preacher Curl":"Biceps","Cable Curl":"Biceps","Reverse Curl":"Biceps","Tricep Pushdown":"Triceps","Skull Crushers":"Triceps","Overhead Tricep Extension":"Triceps","Close Grip Bench":"Triceps","Tricep Kickback":"Triceps","Squat":"Quads","Front Squat":"Quads","Romanian Deadlift":"Hamstrings","Deadlift":"Back/Legs","Leg Press":"Quads","Hack Squat":"Quads","Leg Curl":"Hamstrings","Leg Extension":"Quads","Calf Raise":"Calves","Seated Calf Raise":"Calves","Hip Thrust":"Glutes","Bulgarian Split Squat":"Quads/Glutes","Lunges":"Quads/Glutes","Glute Kickback":"Glutes","Nordic Curl":"Hamstrings"};
 const ALL_SPLITS=[{id:"ppl",emoji:"💪",name:"Push / Pull / Legs",desc:"Most popular. Best for 5–6 days.",days:["Push","Pull","Legs"]},{id:"ul",emoji:"🔄",name:"Upper / Lower",desc:"Great balance. Best for 4 days.",days:["Upper","Lower"]},{id:"fb",emoji:"⚡",name:"Full Body",desc:"Train everything each session.",days:["Full Body"]},{id:"bro",emoji:"🏆",name:"Bro Split",desc:"One muscle group per day.",days:["Chest","Back","Shoulders","Arms","Legs"]},{id:"arnold",emoji:"🦁",name:"Arnold Split",desc:"Chest+Back, Shoulders+Arms, Legs.",days:["Chest & Back","Shoulders & Arms","Legs"]}];
 const FREQ_OPTS=[{id:"1-3",label:"1 – 3 days",sub:"Just getting started or busy schedule",dots:2},{id:"4-5",label:"4 – 5 days",sub:"Consistent trainer, solid commitment",dots:4},{id:"6-7",label:"6 – 7 days",sub:"Dedicated, advanced lifter",dots:6}];
-const BADGES=[{id:"first",icon:"🔥",name:"First Session",desc:"You showed up.",req:1,type:"sessions"},{id:"week7",icon:"💪",name:"7-Day Streak",desc:"7 consecutive days.",req:7,type:"streak"},{id:"s30",icon:"⚡",name:"30 Sessions",desc:"30 sessions logged.",req:30,type:"sessions"},{id:"streak30",icon:"📈",name:"Month Streak",desc:"30 days in a row.",req:30,type:"streak"},{id:"s100",icon:"💎",name:"Century",desc:"100 sessions. Elite.",req:100,type:"sessions"}];
+
 const DAYS_MON=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 const JS_TO_MON=[6,0,1,2,3,4,5];
 const today=new Date();
@@ -506,6 +532,7 @@ export default function App() {
 
   const [skipAuth, setSkipAuth] = useState(false);
   const [screen, setScreen] = useState("splash");
+  const [showAddWorkout, setShowAddWorkout] = useState(false);
   const [obFreq, setObFreq] = useState(null);
   const [obSplit, setObSplit] = useState(null);
   const [obExs, setObExs] = useState({});
@@ -521,9 +548,7 @@ export default function App() {
   const [collapsedDone, setCollapsedDone] = useState({});
   const [trainedDays, setTrained] = useState({});
   const [lastTs, setLastTs] = useState({});
-  const [streak, setStreak] = useState(0);
-  const [longestStreak, setLongestStreak] = useState(0);
-  const [lastStreakDate, setLastStreakDate] = useState(null);
+
   const [viewingDayIdx, setViewingDayIdx] = useState(null);
   const [selectedProgressEx, setSelEx] = useState(null);
   const [expandedSess, setExpS] = useState({});
@@ -549,9 +574,7 @@ export default function App() {
     if (profile) {
       if (profile.name) setUserName(profile.name);
       if (profile.units) setUnits(profile.units);
-      if (profile.streak) setStreak(profile.streak);
-      if (profile.longest_streak) setLongestStreak(profile.longest_streak);
-      if (profile.last_streak_date) setLastStreakDate(profile.last_streak_date);
+
       if (profile.notif_enabled !== undefined) setNotif(profile.notif_enabled);
       if (dbPrograms.length > 0 && screen === 'splash') setScreen('main');
     }
@@ -634,13 +657,7 @@ export default function App() {
       });
       return next;
     });
-    const todayDateStr=today.toDateString();
-    const yesterday=new Date(today); yesterday.setDate(today.getDate()-1);
-    if(lastStreakDate!==todayDateStr){
-      const newStreak=lastStreakDate===yesterday.toDateString()?streak+1:1;
-      setStreak(newStreak); setLongestStreak(ls=>Math.max(ls,newStreak)); setLastStreakDate(todayDateStr);
-      if (user) await updateProfile({ streak: newStreak, longest_streak: Math.max(longestStreak, newStreak), last_streak_date: todayDateStr });
-    }
+
     const viewIdx=viewingDayIdx!==null?viewingDayIdx:todayMonIdx;
     setTrained(p=>({...p,[viewIdx]:[...new Set([...(p[viewIdx]||[]),dayName])]}));
     setLastTs(p=>({...p,[dayName]:Date.now()}));
@@ -662,7 +679,7 @@ export default function App() {
     return bEx?{ex:bEx,from:sKg,to:eKg,gain:bGain}:null;
   };
   const buildWeeklyStats = () => {const tot=sessionLog.reduce((a,s)=>a+s.exercises.reduce((b,ex)=>b+ex.sets.length,0),0);const wt=sessionLog.reduce((a,s)=>a+s.exercises.reduce((b,ex)=>b+ex.sets.reduce((c,st)=>c+((parseFloat(st.w)||0)*(parseInt(st.r)||0)),0),0),0);const reps=sessionLog.reduce((a,s)=>a+s.exercises.reduce((b,ex)=>b+ex.sets.reduce((c,st)=>c+(parseInt(st.r)||0),0),0),0);return{sets:tot,weight:wt,reps};};
-  const isBadgeUnlocked = b => b.type==="sessions"?sessionLog.length>=b.req:streak>=b.req;
+
   const isDayDone = i => (trainedDays[i]||[]).length>0;
   const getDaySessionLabel = i => (trainedDays[i]||[]).join("/").slice(0,5)||"";
   const getLastTrained = day => {const ts=lastTs[day];if(!ts)return"Never";const diff=Math.floor((Date.now()-ts)/(1000*60*60*24));if(diff===0)return"Today";if(diff===1)return"Yesterday";return`${diff}d ago`;};
@@ -676,6 +693,19 @@ export default function App() {
   else { const lastDone=Object.entries(lastTs).sort((a,b)=>b[1]-a[1])[0]; if(lastDone){const diff=Math.floor((Date.now()-lastDone[1])/(1000*60*60*24));ctxText=`${lastDone[0]} — ${diff===0?"today":diff===1?"yesterday":`${diff} days ago`}. Up next?`;ctxOrange=true;} }
   const progGraphData = selectedProgressEx?buildGraphData(selectedProgressEx):null;
   const progGraphGain = progGraphData&&progGraphData.length>=2?`+${(progGraphData[progGraphData.length-1].kg-progGraphData[0].kg).toFixed(1)}${units}`:null;
+
+  // Weekly volume — sets per day this week
+  const weeklyVol = DAYS_MON.map((_,i)=>{
+    const dt=new Date(today); dt.setDate(today.getDate()-todayMonIdx+i);
+    const dtStr=dt.toDateString();
+    const daySessions=sessionLog.filter(s=>new Date(s.date).toDateString()===dtStr);
+    const sets=daySessions.reduce((a,s)=>a+s.exercises.reduce((b,ex)=>b+ex.sets.length,0),0);
+    return{day:DAYS_MON[i].slice(0,1),sets,isToday:i===todayMonIdx,isFuture:i>todayMonIdx};
+  });
+  const maxVol=Math.max(...weeklyVol.map(d=>d.sets),1);
+
+  // Already existing programs split IDs
+  const existingSplitIds=new Set(programs.map(p=>p.split?.id).filter(Boolean));
   const isViewingPast = viewingDayIdx!==null&&viewingDayIdx!==todayMonIdx;
 
   // Show loading screen while checking auth
@@ -693,7 +723,7 @@ export default function App() {
   if(screen==="ob_split")return(<div className="app"><style>{S}</style><div className="topbar"><button className="back-btn" onClick={()=>setScreen(programs.length>0?"main":"ob_freq")}>←</button></div><div className="ob-prog"><div className="ob-track"><div className="ob-fill" style={{width:"50%"}}/></div></div><div className="ob-pg"><div className="u0"><div className="ob-q">Pick your split.</div><div style={{fontSize:14,color:"var(--ink3)",marginTop:4}}>All splits shown</div></div><div className="split-list u1">{ALL_SPLITS.map(s=><div key={s.id} className={`split-opt${obSplit?.id===s.id?" on":""}`} onClick={()=>{setObSplit(s);setObExs({});setObExStep(0);}}><div className="split-emoji">{s.emoji}</div><div style={{flex:1}}><div className="split-name">{s.name}</div><div className="split-desc">{s.desc}</div></div><div className="split-chk">✓</div></div>)}</div><button className="btn-p u2" disabled={!obSplit} onClick={()=>setScreen("ob_exercises")}>Continue</button></div></div>);
   if(screen==="ob_exercises"){const exLib=getExLib(curObDay);const curSel=obExs[curObDay]||[];const progress=50+((obExStep+1)/splitDays.length)*30;return(<div className="app"><style>{S}</style><div className="topbar"><button className="back-btn" onClick={()=>{obExStep>0?setObExStep(s=>s-1):setScreen("ob_split");}}>←</button><span style={{fontSize:12,fontWeight:600,color:"var(--ink3)"}}>{obExStep+1}/{splitDays.length}</span></div><div className="ob-prog"><div className="ob-track"><div className="ob-fill" style={{width:`${progress}%`}}/></div></div><div className="ob-pg"><div className="u0"><div className="ob-q">{curObDay} exercises.</div><div style={{fontSize:14,color:"var(--ink3)",marginTop:4}}>{curSel.length} selected</div></div><div className="ex-sel-list u1">{exLib.map(ex=>{const isOn=curSel.includes(ex);return(<div key={ex} className={`ex-opt${isOn?" on":""}`} onClick={()=>toggleObEx(curObDay,ex)}><div className="ex-opt-name" title={ex}>{ex}</div><div className="ex-opt-chk">✓</div></div>);})}</div><button className="btn-p u2" disabled={!curSel.length} onClick={()=>{if(isLastDay)addProgram();else setObExStep(i=>i+1);}}>{isLastDay?"Finish setup →":`Next — ${splitDays[obExStep+1]} →`}</button></div></div>);}
 
-  if(screen==="achievements")return(<div className="app"><style>{S}</style><div className="topbar"><button className="back-btn" onClick={()=>setScreen("main")}>←</button></div><div className="achieve-scroll"><div className="achieve-hero"><div className="ah-blob"/><div className="ah-num">{streak}</div><div className="ah-label">Day Streak</div><div className="ah-best">Longest: {longestStreak} days</div></div><div className="badge-section-lbl">Unlocked</div><div className="badge-group">{BADGES.filter(b=>isBadgeUnlocked(b)).length===0&&<div style={{padding:"14px 20px",fontSize:13,color:"var(--ink3)"}}>Complete your first session to unlock badges.</div>}{BADGES.filter(b=>isBadgeUnlocked(b)).map(b=><div className="badge-row" key={b.id}><div className="badge-ico unlocked">{b.icon}</div><div><div className="badge-name">{b.name}</div><div className="badge-desc">{b.desc}</div><div className="badge-date">Unlocked</div></div></div>)}</div><div className="badge-section-lbl">Locked</div><div className="badge-group">{BADGES.filter(b=>!isBadgeUnlocked(b)).map(b=>{const hint=b.type==="sessions"?`${b.req-sessionLog.length} more sessions`:b.type==="streak"?`${b.req-streak} more days`:"Log a session";return<div className="badge-row" key={b.id}><div className="badge-ico locked">{b.icon}</div><div><div className="badge-name">{b.name}</div><div className="badge-desc">{b.desc}</div><div className="badge-hint">🔒 {hint} to go</div></div></div>;})}</div></div></div>);
+
 
   /* ════ SESSION SCREEN ════ */
   if(sessionScreen!==null){
@@ -769,7 +799,7 @@ export default function App() {
       {toast&&<div className="toast">{toast}</div>}
       <div className="topbar">
         <div className="brand">Overload</div>
-        <button className="streak-btn" onClick={()=>setScreen("achievements")}><span style={{fontSize:16}}>🔥</span><span className="streak-num">{streak}</span></button>
+        <div style={{fontSize:13,fontWeight:600,color:"var(--ink3)"}}>{sessionLog.length} sessions</div>
       </div>
 
       {/* HOME */}
@@ -786,17 +816,19 @@ export default function App() {
               const filled=(partialPct/100)*CIRC;
               const dateColor=done?(isPartialDay?"var(--orange)":"var(--green)"):isToday||isViewing?"var(--orange)":"var(--ink3)";
               const dateFw=isToday||isViewing?800:done?700:600;
+              const showCard=isToday||isViewing;
               return(
-                <div key={i} className="ws-day" onClick={()=>{if(i<=todayMonIdx){setViewingDayIdx(i===todayMonIdx?null:i);}}}>
-                  <div className="ws-day-name">{DAYS_MON[i][0]}</div>
+                <div key={i} className="ws-day" onClick={()=>{if(i<=todayMonIdx){setViewingDayIdx(i===todayMonIdx?null:i);}}}
+                  style={{background:showCard?"var(--white)":"transparent",borderRadius:14,padding:"6px 2px",boxShadow:showCard?"var(--sh)":"none",transition:"all .2s"}}>
+                  <div className="ws-day-name" style={{color:showCard?"var(--ch)":"var(--ink3)",fontWeight:showCard?700:600}}>{DAYS_MON[i]}</div>
                   <div className="ws-ring-wrap">
                     <svg className="ws-ring-svg" viewBox="0 0 38 38">
                       <circle cx="19" cy="19" r="16" fill="none" stroke="#D0D0D0" strokeWidth="1.5" strokeDasharray="4 3"/>
                       {isToday&&!done&&<circle cx="19" cy="19" r="16" fill="rgba(232,80,10,.08)" stroke="#E8500A" strokeWidth="3"/>}
                       {done&&<circle cx="19" cy="19" r="16" fill={isPartialDay?"none":"rgba(45,122,58,.07)"} stroke={isPartialDay?"var(--orange)":"var(--green)"} strokeWidth="3" strokeDasharray={isPartialDay?`${filled} ${CIRC}`:"none"} strokeDashoffset={CIRC/4} style={isPartialDay?{transform:"rotate(-90deg)",transformOrigin:"19px 19px"}:{}}/>}
-                      {done&&isPartialDay&&<circle cx="19" cy="19" r="14" fill="var(--bg)"/>}
+                      {done&&isPartialDay&&<circle cx="19" cy="19" r="14" fill="var(--white)"/>}
                     </svg>
-                    <div className="ws-ring-inner"><span className="ws-date-num" style={{color:dateColor,fontWeight:dateFw}}>{weekDates[i]}</span></div>
+                    <div className="ws-ring-inner"><span className="ws-date-num" style={{color:dateColor,fontWeight:dateFw}}>{String(weekDates[i]).padStart(2,"0")}</span></div>
                   </div>
                   <div className="ws-sess-lbl" style={{color:done?(isPartialDay?"var(--orange)":"var(--green)"):isToday||isViewing?"var(--orange)":"transparent",fontWeight:700}}>{sessLabel||"‎"}</div>
                 </div>
@@ -847,67 +879,135 @@ export default function App() {
               })}
             </div>
           )}
-          <div className="add-workout-row u2" onClick={()=>{setObSplit(null);setObExs({});setObExStep(0);setObFreq(null);setScreen(programs.length>0?"ob_split":"ob_freq");}}>
+          <div className="add-workout-row u2" onClick={()=>setShowAddWorkout(true)}>
             <div style={{display:"flex",color:"var(--ch)"}}>{TI.plus}</div><span>Add Workout</span>
           </div>
         </div>
       )}
 
-      {/* PROGRESS */}
+      {/* ADD WORKOUT MODAL */}
+      {showAddWorkout&&(
+        <div className="modal-overlay" onClick={e=>{if(e.target===e.currentTarget)setShowAddWorkout(false);}}>
+          <div className="modal-sheet">
+            <div className="modal-handle"/>
+            <div className="modal-title">Add a workout</div>
+            <div className="modal-sub">Pick a split to add to your program</div>
+            {ALL_SPLITS.map(s=>{
+              const alreadyHas=existingSplitIds.has(s.id);
+              return(
+                <div key={s.id} className={`modal-split-opt${alreadyHas?" disabled":""}`}
+                  onClick={()=>{
+                    if(alreadyHas)return;
+                    setShowAddWorkout(false);
+                    setObSplit(s);setObExs({});setObExStep(0);
+                    setScreen("ob_exercises");
+                  }}>
+                  <div className="modal-split-emoji">{s.emoji}</div>
+                  <div style={{flex:1}}>
+                    <div className="modal-split-name">{s.name}</div>
+                    <div className="modal-split-desc">{s.desc}</div>
+                  </div>
+                  {alreadyHas&&<div className="modal-split-badge">Added</div>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* PROGRESS — redesigned */}
       {tab==="progress"&&(
         <div className="prog-scroll">
+          {/* PR Card */}
           <div className="pr-card u0">
             <div className="pr-blob"/>
-            {prData?(<><div className="pr-lbl">Your best improvement 🏆</div><div className="pr-ex-name">{prData.ex}</div><div className="pr-nums"><span className="pr-from">{prData.from}</span><span className="pr-arrow">→</span><span className="pr-to">{prData.to}</span><span className="pr-unit">{units}</span></div><div className="pr-sub">+{prData.gain}{units} improvement</div></>):(
-              <><div className="pr-lbl">Your best this month 🏆</div><div style={{fontSize:14,color:"rgba(255,255,255,.45)",position:"relative",marginTop:4}}>Log sessions to see your best improvement here.</div></>
+            {prData?(<><div className="pr-lbl">Best improvement 🏆</div><div className="pr-ex-name">{prData.ex}</div><div className="pr-nums"><span className="pr-from">{prData.from}</span><span className="pr-arrow">→</span><span className="pr-to">{prData.to}</span><span className="pr-unit">{units}</span></div><div className="pr-sub">+{prData.gain}{units} total improvement</div></>):(
+              <><div className="pr-lbl">Best improvement 🏆</div><div style={{fontSize:14,color:"rgba(255,255,255,.45)",position:"relative",marginTop:4}}>Log sessions to see your best improvement here.</div></>
             )}
           </div>
+
+          {/* 3 stat cards */}
           <div className="stats-row u1">
             <div className="stat-mini"><div className="stat-mini-lbl">Sessions</div><div className="stat-mini-val">{sessionLog.length}</div><div className="stat-mini-sub">Total</div></div>
-            <div className="stat-mini"><div className="stat-mini-lbl">Streak 🔥</div><div className="stat-mini-val">{streak}</div><div className="stat-mini-sub">Days</div></div>
+            <div className="stat-mini"><div className="stat-mini-lbl">Exercises</div><div className="stat-mini-val">{[...new Set(sessionLog.flatMap(s=>s.exercises.map(e=>e.name)))].length}</div><div className="stat-mini-sub">Tracked</div></div>
             <div className="stat-mini"><div className="stat-mini-lbl">Sets</div><div className="stat-mini-val">{weekStats.sets}</div><div className="stat-mini-sub">All time</div></div>
           </div>
+
+          {/* Weekly volume bar chart */}
+          <div className="u2" style={{background:"var(--white)",border:"1.5px solid var(--border)",borderRadius:16,padding:"14px 16px",boxShadow:"var(--sh)"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"var(--ch)",marginBottom:12}}>This week</div>
+            <div className="vol-chart">
+              {weeklyVol.map((d,i)=>(
+                <div className="vol-bar-wrap" key={i}>
+                  <div className={`vol-bar${d.isToday?" today":d.sets===0?" zero":""}`}
+                    style={{height:d.isFuture?4:d.sets===0?4:Math.max(8,Math.round((d.sets/maxVol)*68))}}/>
+                  <div className={`vol-day-lbl${d.isToday?" today":""}`}>{d.day}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{fontSize:12,color:"var(--ink3)",marginTop:8,textAlign:"right"}}>
+              {weeklyVol.reduce((a,d)=>a+d.sets,0)} sets this week
+            </div>
+          </div>
+
+          {/* Calendar */}
+          <div className="u3">
+            <div className="lbl">Training history</div>
+            <div className="cal-card"><CalendarView sessionLog={sessionLog}/></div>
+          </div>
+
+          {/* Strength curves — with search */}
           {allDays.length>0&&(
-            <div className="u2">
-              <div className="lbl">Strength Curves</div>
-              <div className="split-cards-wrap"><div className="split-cards-row">
-                {allDays.map(dayName=>(
-                  <div className="split-card" key={dayName}>
-                    <div className="split-card-name">{dayName}</div>
-                    <div className="split-card-exs">{getDayExs(dayName).slice(0,6).map(ex=>(
-                      <div key={ex} className={`split-card-ex${selectedProgressEx===ex?" active":""}`} title={ex} onClick={()=>setSelEx(selectedProgressEx===ex?null:ex)}>{ex.length>16?ex.slice(0,14)+"…":ex}</div>
-                    ))}</div>
-                  </div>
-                ))}
-              </div></div>
+            <div className="u3">
+              <div className="lbl">Strength curves</div>
+              <div className="ex-search-wrap">
+                <span className="ex-search-icon">🔍</span>
+                <input className="ex-search-inp" placeholder="Search exercise e.g. Bench Press"
+                  value={selectedProgressEx||""}
+                  onChange={e=>{
+                    const v=e.target.value;
+                    const allExs=[...new Set(programs.flatMap(p=>Object.values(p.exs||{}).flat()))];
+                    const match=allExs.find(ex=>ex.toLowerCase().includes(v.toLowerCase()));
+                    setSelEx(v.length>1&&match?match:null);
+                  }}
+                />
+              </div>
               {selectedProgressEx&&progGraphData&&(
-                <div className="prog-graph-wrap" style={{marginTop:12}}>
+                <div className="prog-graph-wrap">
                   <div className="pge-top"><div className="pge-name">{selectedProgressEx}</div>{progGraphGain&&parseFloat(progGraphGain)>0&&<div className="pge-gain">{progGraphGain} ↑</div>}</div>
                   <div className="pge-graph"><MiniGraph data={progGraphData}/></div>
                   {progGraphData.length>=2&&<div className="pge-range"><div className="pge-start">{progGraphData[0].kg}{units} — start</div><div className="pge-end">{progGraphData[progGraphData.length-1].kg}{units} latest</div></div>}
                 </div>
               )}
+              {selectedProgressEx&&!progGraphData&&(
+                <div style={{background:"var(--white)",border:"1.5px solid var(--border)",borderRadius:14,padding:"20px 16px",textAlign:"center",boxShadow:"var(--sh)"}}>
+                  <div style={{fontSize:13,color:"var(--ink3)"}}>Log at least 2 sessions of {selectedProgressEx} to see your curve.</div>
+                </div>
+              )}
+              {!selectedProgressEx&&(
+                <div style={{background:"var(--surface)",borderRadius:12,padding:"14px 16px"}}>
+                  <div style={{fontSize:13,color:"var(--ink3)"}}>Type an exercise name above to see your strength progression over time.</div>
+                </div>
+              )}
             </div>
           )}
-          <div className="u3">
-            <div className="lbl">History</div>
-            <div className="cal-card"><CalendarView sessionLog={sessionLog}/></div>
-            {sessionLog.length>0&&(
-              <div style={{marginTop:14}}>
-                <div className="lbl">Recent Sessions</div>
-                {sessionLog.slice(0,5).map(sess=>(
-                  <div className="hist-sess" key={sess.id}>
-                    <div className="hist-sess-hdr" onClick={()=>setExpS(p=>({...p,[sess.id]:!p[sess.id]}))}>
-                      <div><div className="hist-sess-date">{fmtDate(sess.date)}</div><div className="hist-sess-name">{sess.dayName} · {sess.exercises.length} exercises{sess.partial?" · Partial":""}</div></div>
-                      <span className={`hist-sess-chev${expandedSess[sess.id]?" open":""}`}>▼</span>
-                    </div>
-                    {expandedSess[sess.id]&&(<div className="hist-sess-body">{sess.exercises.map((ex,ei)=>(<div key={ei}><div className="hist-ex-name">{ex.name}</div>{ex.sets.map((s,si)=><div className="hist-set-row" key={si}><div className="hist-set-n">Set {si+1}</div><div className="hist-set-val">{s.w} {units} × {s.r} reps</div></div>)}</div>))}</div>)}
+
+          {/* Recent sessions */}
+          {sessionLog.length>0&&(
+            <div className="u4">
+              <div className="lbl">Recent sessions</div>
+              {sessionLog.slice(0,5).map(sess=>(
+                <div className="hist-sess" key={sess.id}>
+                  <div className="hist-sess-hdr" onClick={()=>setExpS(p=>({...p,[sess.id]:!p[sess.id]}))}>
+                    <div><div className="hist-sess-date">{fmtDate(sess.date)}</div><div className="hist-sess-name">{sess.dayName} · {sess.exercises.length} exercises{sess.partial?" · Partial":""}</div></div>
+                    <span className={`hist-sess-chev${expandedSess[sess.id]?" open":""}`}>▼</span>
                   </div>
-                ))}
-              </div>
-            )}
-            {sessionLog.length===0&&<div className="empty-state" style={{marginTop:10}}><div className="empty-state-icon">📋</div><div className="empty-state-text">Your sessions will appear here.</div></div>}
-          </div>
+                  {expandedSess[sess.id]&&(<div className="hist-sess-body">{sess.exercises.map((ex,ei)=>(<div key={ei}><div className="hist-ex-name">{ex.name}</div>{ex.sets.map((s,si)=><div className="hist-set-row" key={si}><div className="hist-set-n">Set {si+1}</div><div className="hist-set-val">{s.w} {units} × {s.r} reps</div></div>)}</div>))}</div>)}
+                </div>
+              ))}
+            </div>
+          )}
+          {sessionLog.length===0&&<div className="empty-state u3"><div className="empty-state-icon">📋</div><div className="empty-state-text">Your sessions will appear here.</div></div>}
         </div>
       )}
 
@@ -922,7 +1022,7 @@ export default function App() {
                 <div className="puc-name-row" onClick={()=>{setNameInput(userName);setEditName(true);}}><div className="puc-name">{userName}</div><div style={{color:"var(--ink3)",display:"flex"}}>{TI.edit}</div></div>
               )}
               <div className="puc-sub">{user?`Signed in as ${user.email}`:"Guest — data not saved"}</div>
-              <div className="puc-streak-pill">🔥 {streak} day streak</div>
+              <div className="puc-streak-pill">💪 {sessionLog.length} sessions logged</div>
             </div>
           </div>
           {!user&&(
@@ -932,11 +1032,7 @@ export default function App() {
               <button className="btn-p" style={{padding:"10px",fontSize:13}} onClick={()=>{ setSkipAuth(false); setScreen("splash"); }}>Create account</button>
             </div>
           )}
-          <div className="profile-section-lbl">Achievements</div>
-          <div className="profile-group">
-            <div className="profile-row" onClick={()=>setScreen("achievements")}><div className="profile-row-icon"><span>🔥</span></div><div className="profile-row-label">Current Streak</div><div className="profile-row-value">{streak} days</div><div className="profile-row-chev">{TI.chevron}</div></div>
-            <div className="profile-row" onClick={()=>setScreen("achievements")}><div className="profile-row-icon">{TI.trophy}</div><div className="profile-row-label">Badges</div><div className="profile-row-value">{BADGES.filter(b=>isBadgeUnlocked(b)).length} unlocked</div><div className="profile-row-chev">{TI.chevron}</div></div>
-          </div>
+
           <div className="profile-section-lbl">Preferences</div>
           <div className="profile-group">
             <div className="profile-row"><div className="profile-row-icon">{TI.weight}</div><div className="profile-row-label">Units</div><div className="units-toggle"><div className={`ut-opt${units==="kg"?" on":""}`} onClick={async()=>{setUnits("kg");if(user)await updateProfile({units:"kg"});}}>kg</div><div className={`ut-opt${units==="lbs"?" on":""}`} onClick={async()=>{setUnits("lbs");if(user)await updateProfile({units:"lbs"});}}>lbs</div></div></div>
@@ -948,7 +1044,7 @@ export default function App() {
           </div>
           <div className="profile-section-lbl">Account Actions</div>
           <div className="profile-group">
-            {user&&<div className="profile-row" onClick={async()=>{await signOut();setSkipAuth(false);setScreen("splash");setPrograms([]);setSessionLog([]);setWSets({});setStreak(0);}}><div className="profile-row-icon">{TI.logout}</div><div className="profile-row-label">Logout</div><div className="profile-row-chev">{TI.chevron}</div></div>}
+            {user&&<div className="profile-row" onClick={async()=>{await signOut();setSkipAuth(false);setScreen("splash");setPrograms([]);setSessionLog([]);setWSets({});}}><div className="profile-row-icon">{TI.logout}</div><div className="profile-row-label">Logout</div><div className="profile-row-chev">{TI.chevron}</div></div>}
             <div className="profile-row"><div className="profile-row-icon">{TI.trash}</div><div className="profile-row-label" style={{color:"#cc3333"}}>Delete Account</div><div className="profile-row-chev">{TI.chevron}</div></div>
           </div>
           <div className="profile-version">VERSION 1.0.0</div>
