@@ -460,65 +460,6 @@ const getMonthLabel=dt=>new Date(dt).toLocaleDateString("en-GB",{month:"long",ye
 const CIRC=2*Math.PI*16;
 
 /* ═══════════════════════════════════════
-   AUTH SCREEN
-═══════════════════════════════════════ */
-function AuthScreen({ onSkip }) {
-  const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
-  const [mode, setMode] = useState('login'); // login | signup
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleEmail = async () => {
-    setError(''); setLoading(true);
-    if (mode === 'login') {
-      const { error } = await signInWithEmail(email, password);
-      if (error) setError(error.message);
-    } else {
-      const { error } = await signUpWithEmail(email, password, name);
-      if (error) setError(error.message);
-      else setError('Check your email to confirm your account.');
-    }
-    setLoading(false);
-  };
-
-  return(
-    <div className="app"><style>{S}</style>
-      <div className="auth-screen">
-        <div className="auth-hero">
-          <div className="auth-logo">Overload</div>
-          <div className="auth-tagline">Every rep counted.</div>
-          <div style={{fontSize:15,color:"var(--ink3)",lineHeight:1.6}}>
-            The progressive overload tracker. Your data saves to the cloud — log on any device, never lose your history.
-          </div>
-        </div>
-        <div className="auth-btns">
-          <button className="google-btn" onClick={signInWithGoogle}>
-            {TI.google} Continue with Google
-          </button>
-          <div style={{textAlign:"center",fontSize:12,color:"var(--ink3)",margin:"4px 0"}}>or</div>
-          <div className="email-form">
-            {mode==='signup'&&<input className="auth-input" placeholder="Your name" value={name} onChange={e=>setName(e.target.value)}/>}
-            <input className="auth-input" placeholder="Email" type="email" value={email} onChange={e=>setEmail(e.target.value)}/>
-            <input className="auth-input" placeholder="Password" type="password" value={password} onChange={e=>setPassword(e.target.value)}/>
-            {error&&<div className="auth-error">{error}</div>}
-            <button className="btn-p" onClick={handleEmail} disabled={loading}>
-              {loading?"...":(mode==='login'?"Sign in":"Create account")}
-            </button>
-          </div>
-          <div className="auth-toggle" onClick={()=>setMode(m=>m==='login'?'signup':'login')}>
-            {mode==='login'?<>Don't have an account? <span>Sign up</span></>:<>Already have an account? <span>Sign in</span></>}
-          </div>
-          <button className="btn-o" onClick={onSkip}>Continue without account</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════
    MAIN APP
 ═══════════════════════════════════════ */
 export default function App() {
@@ -530,7 +471,6 @@ export default function App() {
     saveSession, saveWorkoutState, updateProfile
   } = useData(user);
 
-  const [skipAuth, setSkipAuth] = useState(false);
   const [screen, setScreen] = useState("splash");
   const [showAddWorkout, setShowAddWorkout] = useState(false);
   const [obFreq, setObFreq] = useState(null);
@@ -711,17 +651,50 @@ export default function App() {
   // Show loading screen while checking auth
   if(authLoading){ return(<div className="app"><style>{S}</style><div className="loading-screen"><div className="spinner"/><div className="loading-text">Loading Overload...</div></div></div>); }
 
-  // Show auth screen if not logged in and not skipped
-  if(!user && !skipAuth && screen==="splash"){ return <AuthScreen onSkip={()=>setSkipAuth(true)}/>; }
-
   /* ════ ONBOARDING ════ */
-  if(screen==="splash")return(<div className="app"><style>{S}</style><div className="splash"><div className="splash-space"/><div className="splash-bottom"><div className="splash-title u0">Track every lift.<br/>Beat it next time.</div><div className="splash-sub u1">The simplest progressive overload tracker.</div><button className="btn-p u2" onClick={()=>setScreen("ob_info1")}>Get Started</button><div className="splash-si u2">Already have an account? <span onClick={()=>setScreen("main")}>Sign in</span></div></div></div></div>);
+  if(screen==="splash")return(<div className="app"><style>{S}</style><div className="splash"><div className="splash-space"/><div className="splash-bottom"><div className="splash-title u0">Track every lift.<br/>Beat it next time.</div><div className="splash-sub u1">The simplest progressive overload tracker.</div><button className="btn-p u2" onClick={()=>setScreen("ob_info1")}>Get Started</button><button className="btn-o u3" onClick={async()=>{await signInWithGoogle();}}>Already have an account</button></div></div></div>);
   if(screen==="ob_info1")return(<div className="app"><style>{S}</style><div className="topbar"><button className="back-btn" onClick={()=>setScreen("splash")}>←</button></div><div className="ob-prog"><div className="ob-track"><div className="ob-fill" style={{width:"5%"}}/></div></div><div className="ob-info-pg"><div className="ob-info-top"><div className="u0"><div className="ob-q">What is progressive overload?</div></div><div style={{display:"flex",justifyContent:"center"}} className="u1"><div className="bar-visual">{[{h:30},{h:44},{h:58},{h:70},{h:85}].map((b,i)=><div key={i} className={`bv-bar${i===4?" hi":""}`} style={{width:38,height:b.h}}/>)}</div></div><div className="ob-body u2">If you lift <b>slightly more each week</b> — more weight, more reps, or more sets — your muscles must keep adapting and growing.<br/><br/>It's the most proven principle in all of fitness.</div></div><div className="ob-info-bottom"><button className="btn-p u3" onClick={()=>setScreen("ob_info2")}>Next →</button></div></div></div>);
   if(screen==="ob_info2")return(<div className="app"><style>{S}</style><div className="topbar"><button className="back-btn" onClick={()=>setScreen("ob_info1")}>←</button></div><div className="ob-prog"><div className="ob-track"><div className="ob-fill" style={{width:"12%"}}/></div></div><div className="ob-info-pg"><div className="ob-info-top"><div className="u0"><div className="ob-q">Why most people stop progressing.</div></div><div className="u1"><div className="chart2">{[{lbl:"With tracking",pct:85,color:"var(--ch)"},{lbl:"Without tracking",pct:22,color:"var(--ink4)"}].map((r,i)=><div className="c2-row" key={i}><div className="c2-lbl">{r.lbl}</div><div className="c2-wrap"><div className="c2-bar" style={{width:`${r.pct}%`,background:r.color}}/></div><div className="c2-val" style={{color:r.color}}>{r.pct}%</div></div>)}</div></div><div className="ob-body u2">They train hard but <b>never write anything down.</b> Every session they're guessing the weight. Without a reference point, there's no overload.</div></div><div className="ob-info-bottom"><button className="btn-p u3" onClick={()=>setScreen("ob_bridge")}>Next →</button></div></div></div>);
   if(screen==="ob_bridge")return(<div className="app"><style>{S}</style><div className="topbar"><button className="back-btn" onClick={()=>setScreen("ob_info2")}>←</button></div><div className="ob-prog"><div className="ob-track"><div className="ob-fill" style={{width:"20%"}}/></div></div><div className="bridge-pg"><div className="u0"><div className="bridge-title">Now let's build<br/>your program.</div><div className="bridge-sub">Takes 60 seconds. Set up your split and exercises so you're ready to start tracking today.</div></div><button className="btn-p u1" onClick={()=>setScreen("ob_freq")}>Let's go →</button></div></div>);
   if(screen==="ob_freq")return(<div className="app"><style>{S}</style><div className="topbar"><button className="back-btn" onClick={()=>setScreen("ob_bridge")}>←</button></div><div className="ob-prog"><div className="ob-track"><div className="ob-fill" style={{width:"32%"}}/></div></div><div className="ob-pg"><div className="u0"><div className="ob-q">How often do<br/>you train?</div></div><div className="freq-list u1">{FREQ_OPTS.map(f=><div key={f.id} className={`freq-opt${obFreq===f.id?" on":""}`} onClick={()=>setObFreq(f.id)}><div className="freq-dots">{Array.from({length:f.dots},(_,i)=><div key={i} className="freq-dot"/>)}</div><div><div className="freq-title">{f.label}</div><div className="freq-sub">{f.sub}</div></div></div>)}</div><button className="btn-p u2" disabled={!obFreq} onClick={()=>setScreen("ob_split")}>Continue</button></div></div>);
   if(screen==="ob_split")return(<div className="app"><style>{S}</style><div className="topbar"><button className="back-btn" onClick={()=>setScreen(programs.length>0?"main":"ob_freq")}>←</button></div><div className="ob-prog"><div className="ob-track"><div className="ob-fill" style={{width:"50%"}}/></div></div><div className="ob-pg"><div className="u0"><div className="ob-q">Pick your split.</div><div style={{fontSize:14,color:"var(--ink3)",marginTop:4}}>All splits shown</div></div><div className="split-list u1">{ALL_SPLITS.map(s=><div key={s.id} className={`split-opt${obSplit?.id===s.id?" on":""}`} onClick={()=>{setObSplit(s);setObExs({});setObExStep(0);}}><div className="split-emoji">{s.emoji}</div><div style={{flex:1}}><div className="split-name">{s.name}</div><div className="split-desc">{s.desc}</div></div><div className="split-chk">✓</div></div>)}</div><button className="btn-p u2" disabled={!obSplit} onClick={()=>setScreen("ob_exercises")}>Continue</button></div></div>);
-  if(screen==="ob_exercises"){const exLib=getExLib(curObDay);const curSel=obExs[curObDay]||[];const progress=50+((obExStep+1)/splitDays.length)*30;return(<div className="app"><style>{S}</style><div className="topbar"><button className="back-btn" onClick={()=>{obExStep>0?setObExStep(s=>s-1):setScreen("ob_split");}}>←</button><span style={{fontSize:12,fontWeight:600,color:"var(--ink3)"}}>{obExStep+1}/{splitDays.length}</span></div><div className="ob-prog"><div className="ob-track"><div className="ob-fill" style={{width:`${progress}%`}}/></div></div><div className="ob-pg"><div className="u0"><div className="ob-q">{curObDay} exercises.</div><div style={{fontSize:14,color:"var(--ink3)",marginTop:4}}>{curSel.length} selected</div></div><div className="ex-sel-list u1">{exLib.map(ex=>{const isOn=curSel.includes(ex);return(<div key={ex} className={`ex-opt${isOn?" on":""}`} onClick={()=>toggleObEx(curObDay,ex)}><div className="ex-opt-name" title={ex}>{ex}</div><div className="ex-opt-chk">✓</div></div>);})}</div><button className="btn-p u2" disabled={!curSel.length} onClick={()=>{if(isLastDay)addProgram();else setObExStep(i=>i+1);}}>{isLastDay?"Finish setup →":`Next — ${splitDays[obExStep+1]} →`}</button></div></div>);}
+  if(screen==="ob_exercises"){const exLib=getExLib(curObDay);const curSel=obExs[curObDay]||[];const progress=50+((obExStep+1)/splitDays.length)*30;return(<div className="app"><style>{S}</style><div className="topbar"><button className="back-btn" onClick={()=>{obExStep>0?setObExStep(s=>s-1):setScreen("ob_split");}}>←</button><span style={{fontSize:12,fontWeight:600,color:"var(--ink3)"}}>{obExStep+1}/{splitDays.length}</span></div><div className="ob-prog"><div className="ob-track"><div className="ob-fill" style={{width:`${progress}%`}}/></div></div><div className="ob-pg"><div className="u0"><div className="ob-q">{curObDay} exercises.</div><div style={{fontSize:14,color:"var(--ink3)",marginTop:4}}>{curSel.length} selected</div></div><div className="ex-sel-list u1">{exLib.map(ex=>{const isOn=curSel.includes(ex);return(<div key={ex} className={`ex-opt${isOn?" on":""}`} onClick={()=>toggleObEx(curObDay,ex)}><div className="ex-opt-name" title={ex}>{ex}</div><div className="ex-opt-chk">✓</div></div>);})}</div><button className="btn-p u2" disabled={!curSel.length} onClick={()=>{if(isLastDay)setScreen("ob_auth");else setObExStep(i=>i+1);}}>{isLastDay?"Continue →":`Next — ${splitDays[obExStep+1]} →`}</button></div></div>);}
+
+  if(screen==="ob_auth")return(
+    <div className="app"><style>{S}</style>
+      <div className="topbar"><button className="back-btn" onClick={()=>setScreen("ob_exercises")}>←</button></div>
+      <div className="ob-prog"><div className="ob-track"><div className="ob-fill" style={{width:"95%"}}/></div></div>
+      <div style={{flex:1,display:"flex",flexDirection:"column",padding:"40px 24px 48px"}}>
+        <div style={{flex:1,display:"flex",flexDirection:"column",justifyContent:"center",gap:16}}>
+          <div className="u0">
+            <div style={{fontSize:32,fontWeight:900,letterSpacing:"-1px",color:"var(--ch)",marginBottom:8}}>Save your progress.</div>
+            <div style={{fontSize:16,color:"var(--ink3)",lineHeight:1.6}}>Sign in to back up your workouts to the cloud. Your data syncs across devices and is never lost.</div>
+          </div>
+          <div className="u1" style={{background:"var(--surface)",borderRadius:16,padding:"16px",display:"flex",gap:12,alignItems:"flex-start"}}>
+            <div style={{fontSize:24}}>☁️</div>
+            <div>
+              <div style={{fontSize:14,fontWeight:700,color:"var(--ch)",marginBottom:2}}>Cloud sync</div>
+              <div style={{fontSize:13,color:"var(--ink3)"}}>Your sessions, sets and weights saved permanently.</div>
+            </div>
+          </div>
+          <div className="u2" style={{background:"var(--surface)",borderRadius:16,padding:"16px",display:"flex",gap:12,alignItems:"flex-start"}}>
+            <div style={{fontSize:24}}>📱</div>
+            <div>
+              <div style={{fontSize:14,fontWeight:700,color:"var(--ch)",marginBottom:2}}>Any device</div>
+              <div style={{fontSize:13,color:"var(--ink3)"}}>Log on your phone, see your history anywhere.</div>
+            </div>
+          </div>
+        </div>
+        <div className="u3" style={{display:"flex",flexDirection:"column",gap:10}}>
+          <button className="google-btn" onClick={async()=>{await signInWithGoogle();}}>
+            {TI.google} Continue with Google
+          </button>
+          <button className="btn-o" onClick={addProgram}>Skip for now</button>
+          <div style={{textAlign:"center",fontSize:12,color:"var(--ink3)"}}>You can always sign in later from Profile</div>
+        </div>
+      </div>
+    </div>
+  );
 
 
 
@@ -734,6 +707,10 @@ export default function App() {
     const pct=tot>0?Math.round(done/tot*100):0;
     const hasAnyDone=anyDone(dayName);
     const quickAdds=getExLib(dayName).filter(e=>!exNames.includes(e)).slice(0,6);
+    const handleReset=()=>{
+      setWSets(p=>{const next={...p};exNames.forEach(ex=>{next[ex]=(p[ex]||[]).map(s=>({...s,done:false,typed:false,w:s.lastW!=="—"?s.lastW:"",r:s.lastR!=="—"?s.lastR:""}));});return next;});
+      setCollapsedDone({});
+    };
     return(
       <div className="app"><style>{S}</style>
         {toast&&<div className="toast">{toast}</div>}
@@ -741,6 +718,7 @@ export default function App() {
           <div className="sess-topbar">
             <button className="back-btn" onClick={()=>{setSessionScreen(null);setEditDay(null);setCollapsedDone({});}}>←</button>
             <div className="sess-title">{dayName}</div>
+            <button className="back-btn" onClick={()=>setEditDay(isEdit?null:dayName)} style={{fontSize:16,background:isEdit?"var(--ch)":"var(--surface)",color:isEdit?"white":"var(--ink)"}}>✏️</button>
           </div>
           <div className="sess-counter">
             <div className="sess-count-row"><span className="sess-count-num">{done} / {tot}</span><span className="sess-count-total">sets</span></div>
@@ -785,8 +763,9 @@ export default function App() {
             )}
           </div>
           <div className="sess-footer">
-            <button className={`sess-edit-btn${isEdit?" active":""}`} onClick={()=>setEditDay(isEdit?null:dayName)}>{isEdit?"✓ Done":"Edit"}</button>
-            {!isEdit&&<button className="sess-finish-btn" disabled={!hasAnyDone} onClick={()=>doFinish(dayName)}>Finish</button>}
+            {!isEdit&&<button className="sess-edit-btn" onClick={handleReset}>Reset</button>}
+            {isEdit&&<button className="sess-edit-btn active" onClick={()=>setEditDay(null)}>✓ Done</button>}
+            {!isEdit&&<button className="sess-finish-btn" disabled={!hasAnyDone} onClick={()=>{doFinish(dayName);setSessionScreen(null);setCollapsedDone({});}}>Finish</button>}
           </div>
         </div>
       </div>
@@ -798,8 +777,7 @@ export default function App() {
     <div className="app"><style>{S}</style>
       {toast&&<div className="toast">{toast}</div>}
       <div className="topbar">
-        <div className="brand">Overload</div>
-        <div style={{fontSize:13,fontWeight:600,color:"var(--ink3)"}}>{sessionLog.length} sessions</div>
+        <div className="brand">{tab==="home"?"Overload":tab==="progress"?"Progress":"Profile"}</div>
       </div>
 
       {/* HOME */}
@@ -817,6 +795,8 @@ export default function App() {
               const dateColor=done?(isPartialDay?"var(--orange)":"var(--green)"):isToday||isViewing?"var(--orange)":"var(--ink3)";
               const dateFw=isToday||isViewing?800:done?700:600;
               const showCard=isToday||isViewing;
+              const dateColor=done?(isPartialDay?"var(--orange)":"var(--green)"):isViewing?"var(--orange)":"var(--ink3)";
+              const dateFw=isToday||done?700:600;
               return(
                 <div key={i} className="ws-day" onClick={()=>{if(i<=todayMonIdx){setViewingDayIdx(i===todayMonIdx?null:i);}}}
                   style={{background:showCard?"var(--white)":"transparent",borderRadius:14,padding:"6px 2px",boxShadow:showCard?"var(--sh)":"none",transition:"all .2s"}}>
@@ -824,13 +804,13 @@ export default function App() {
                   <div className="ws-ring-wrap">
                     <svg className="ws-ring-svg" viewBox="0 0 38 38">
                       <circle cx="19" cy="19" r="16" fill="none" stroke="#D0D0D0" strokeWidth="1.5" strokeDasharray="4 3"/>
-                      {isToday&&!done&&<circle cx="19" cy="19" r="16" fill="rgba(232,80,10,.08)" stroke="#E8500A" strokeWidth="3"/>}
-                      {done&&<circle cx="19" cy="19" r="16" fill={isPartialDay?"none":"rgba(45,122,58,.07)"} stroke={isPartialDay?"var(--orange)":"var(--green)"} strokeWidth="3" strokeDasharray={isPartialDay?`${filled} ${CIRC}`:"none"} strokeDashoffset={CIRC/4} style={isPartialDay?{transform:"rotate(-90deg)",transformOrigin:"19px 19px"}:{}}/>}
+                      {done&&!isPartialDay&&<circle cx="19" cy="19" r="16" fill="rgba(45,122,58,.07)" stroke="var(--green)" strokeWidth="3"/>}
+                      {done&&isPartialDay&&<circle cx="19" cy="19" r="16" fill="none" stroke="var(--orange)" strokeWidth="3" strokeDasharray={`${(partialPct/100)*CIRC} ${CIRC}`} strokeDashoffset={CIRC/4} style={{transform:"rotate(-90deg)",transformOrigin:"19px 19px"}}/>}
                       {done&&isPartialDay&&<circle cx="19" cy="19" r="14" fill="var(--white)"/>}
                     </svg>
                     <div className="ws-ring-inner"><span className="ws-date-num" style={{color:dateColor,fontWeight:dateFw}}>{String(weekDates[i]).padStart(2,"0")}</span></div>
                   </div>
-                  <div className="ws-sess-lbl" style={{color:done?(isPartialDay?"var(--orange)":"var(--green)"):isToday||isViewing?"var(--orange)":"transparent",fontWeight:700}}>{sessLabel||"‎"}</div>
+                  <div className="ws-sess-lbl" style={{color:done?(isPartialDay?"var(--orange)":"var(--green)"):"transparent",fontWeight:700}}>{sessLabel||"‎"}</div>
                 </div>
               );
             })}
@@ -889,28 +869,56 @@ export default function App() {
       {showAddWorkout&&(
         <div className="modal-overlay" onClick={e=>{if(e.target===e.currentTarget)setShowAddWorkout(false);}}>
           <div className="modal-sheet">
-            <div className="modal-handle"/>
-            <div className="modal-title">Add a workout</div>
-            <div className="modal-sub">Pick a split to add to your program</div>
-            {ALL_SPLITS.map(s=>{
-              const alreadyHas=existingSplitIds.has(s.id);
-              return(
-                <div key={s.id} className={`modal-split-opt${alreadyHas?" disabled":""}`}
-                  onClick={()=>{
-                    if(alreadyHas)return;
-                    setShowAddWorkout(false);
-                    setObSplit(s);setObExs({});setObExStep(0);
-                    setScreen("ob_exercises");
-                  }}>
-                  <div className="modal-split-emoji">{s.emoji}</div>
-                  <div style={{flex:1}}>
-                    <div className="modal-split-name">{s.name}</div>
-                    <div className="modal-split-desc">{s.desc}</div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+              <div>
+                <div className="modal-title">{obSplit?"Pick exercises":"Add a workout"}</div>
+                <div className="modal-sub">{obSplit?`${obExStep+1}/${obSplit.days.length} — ${obSplit.days[obExStep]}`:"Pick a split to add to your program"}</div>
+              </div>
+              <button onClick={()=>{setShowAddWorkout(false);setObSplit(null);setObExs({});setObExStep(0);}} style={{width:32,height:32,borderRadius:"50%",background:"var(--surface)",border:"none",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>✕</button>
+            </div>
+            {!obSplit?(
+              ALL_SPLITS.map(s=>{
+                const alreadyHas=existingSplitIds.has(s.id);
+                return(
+                  <div key={s.id} className={`modal-split-opt${alreadyHas?" disabled":""}`}
+                    onClick={()=>{if(alreadyHas)return;setObSplit(s);setObExs({});setObExStep(0);}}>
+                    <div className="modal-split-emoji">{s.emoji}</div>
+                    <div style={{flex:1}}>
+                      <div className="modal-split-name">{s.name}</div>
+                      <div className="modal-split-desc">{s.desc}</div>
+                    </div>
+                    {alreadyHas&&<div className="modal-split-badge">Added</div>}
                   </div>
-                  {alreadyHas&&<div className="modal-split-badge">Added</div>}
+                );
+              })
+            ):(
+              <div>
+                <div style={{fontSize:15,fontWeight:700,color:"var(--ch)",marginBottom:12}}>{obSplit.days[obExStep]} exercises <span style={{color:"var(--ink3)",fontWeight:500,fontSize:13}}>({(obExs[obSplit.days[obExStep]]||[]).length} selected)</span></div>
+                <div style={{maxHeight:340,overflowY:"auto",display:"flex",flexDirection:"column",gap:6}}>
+                  {getExLib(obSplit.days[obExStep]).map(ex=>{
+                    const curDay=obSplit.days[obExStep];
+                    const isOn=(obExs[curDay]||[]).includes(ex);
+                    return(
+                      <div key={ex} className={`ex-opt${isOn?" on":""}`} onClick={()=>toggleObEx(curDay,ex)}>
+                        <div className="ex-opt-name">{ex}</div>
+                        <div className="ex-opt-chk">✓</div>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
+                <div style={{display:"flex",gap:8,marginTop:14}}>
+                  <button className="btn-o" style={{flex:1,padding:12}} onClick={()=>{if(obExStep>0)setObExStep(i=>i-1);else setObSplit(null);}}>← Back</button>
+                  <button className="btn-p" style={{flex:2,padding:12}} disabled={!(obExs[obSplit.days[obExStep]]||[]).length}
+                    onClick={async()=>{
+                      const isLast=obExStep===obSplit.days.length-1;
+                      if(isLast){await addProgram();setShowAddWorkout(false);}
+                      else setObExStep(i=>i+1);
+                    }}>
+                    {obExStep===obSplit.days.length-1?"Add to program →":`Next — ${obSplit.days[obExStep+1]} →`}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -929,68 +937,63 @@ export default function App() {
           {/* 3 stat cards */}
           <div className="stats-row u1">
             <div className="stat-mini"><div className="stat-mini-lbl">Sessions</div><div className="stat-mini-val">{sessionLog.length}</div><div className="stat-mini-sub">Total</div></div>
-            <div className="stat-mini"><div className="stat-mini-lbl">Exercises</div><div className="stat-mini-val">{[...new Set(sessionLog.flatMap(s=>s.exercises.map(e=>e.name)))].length}</div><div className="stat-mini-sub">Tracked</div></div>
             <div className="stat-mini"><div className="stat-mini-lbl">Sets</div><div className="stat-mini-val">{weekStats.sets}</div><div className="stat-mini-sub">All time</div></div>
+            <div className="stat-mini"><div className="stat-mini-lbl">Volume</div><div className="stat-mini-val">{weekStats.weight>=1000?`${(weekStats.weight/1000).toFixed(1)}k`:weekStats.weight}</div><div className="stat-mini-sub">{units} lifted</div></div>
           </div>
 
-          {/* Weekly volume bar chart */}
-          <div className="u2" style={{background:"var(--white)",border:"1.5px solid var(--border)",borderRadius:16,padding:"14px 16px",boxShadow:"var(--sh)"}}>
-            <div style={{fontSize:13,fontWeight:700,color:"var(--ch)",marginBottom:12}}>This week</div>
-            <div className="vol-chart">
-              {weeklyVol.map((d,i)=>(
-                <div className="vol-bar-wrap" key={i}>
-                  <div className={`vol-bar${d.isToday?" today":d.sets===0?" zero":""}`}
-                    style={{height:d.isFuture?4:d.sets===0?4:Math.max(8,Math.round((d.sets/maxVol)*68))}}/>
-                  <div className={`vol-day-lbl${d.isToday?" today":""}`}>{d.day}</div>
-                </div>
-              ))}
-            </div>
-            <div style={{fontSize:12,color:"var(--ink3)",marginTop:8,textAlign:"right"}}>
-              {weeklyVol.reduce((a,d)=>a+d.sets,0)} sets this week
-            </div>
-          </div>
-
-          {/* Calendar */}
-          <div className="u3">
-            <div className="lbl">Training history</div>
-            <div className="cal-card"><CalendarView sessionLog={sessionLog}/></div>
-          </div>
-
-          {/* Strength curves — with search */}
-          {allDays.length>0&&(
-            <div className="u3">
-              <div className="lbl">Strength curves</div>
-              <div className="ex-search-wrap">
-                <span className="ex-search-icon">🔍</span>
-                <input className="ex-search-inp" placeholder="Search exercise e.g. Bench Press"
-                  value={selectedProgressEx||""}
-                  onChange={e=>{
-                    const v=e.target.value;
-                    const allExs=[...new Set(programs.flatMap(p=>Object.values(p.exs||{}).flat()))];
-                    const match=allExs.find(ex=>ex.toLowerCase().includes(v.toLowerCase()));
-                    setSelEx(v.length>1&&match?match:null);
-                  }}
-                />
+          {/* Strength — before/after cards per exercise */}
+          {sessionLog.length>0&&(()=>{
+            const allTrackedExs=[...new Set(sessionLog.flatMap(s=>s.exercises.map(e=>e.name)))];
+            const exWithProgress=allTrackedExs.map(exName=>{
+              const sessWithEx=sessionLog.filter(s=>s.exercises.some(e=>e.name===exName)).reverse();
+              if(sessWithEx.length<2)return null;
+              const first=sessWithEx[0].exercises.find(e=>e.name===exName);
+              const last=sessWithEx[sessWithEx.length-1].exercises.find(e=>e.name===exName);
+              if(!first||!last)return null;
+              const firstMax=Math.max(...first.sets.map(s=>parseFloat(s.w)||0).filter(v=>v>0));
+              const lastMax=Math.max(...last.sets.map(s=>parseFloat(s.w)||0).filter(v=>v>0));
+              if(!firstMax||!lastMax)return null;
+              return{name:exName,first:firstMax,last:lastMax,diff:lastMax-firstMax,sessions:sessWithEx.length};
+            }).filter(Boolean);
+            if(!exWithProgress.length)return(
+              <div className="u2" style={{background:"var(--white)",border:"1.5px solid var(--border)",borderRadius:16,padding:"20px 16px",boxShadow:"var(--sh)",textAlign:"center"}}>
+                <div style={{fontSize:28,marginBottom:8}}>📈</div>
+                <div style={{fontSize:14,fontWeight:600,color:"var(--ch)",marginBottom:4}}>Strength Progress</div>
+                <div style={{fontSize:13,color:"var(--ink3)"}}>Log at least 2 sessions of any exercise to see your progress here.</div>
               </div>
-              {selectedProgressEx&&progGraphData&&(
-                <div className="prog-graph-wrap">
-                  <div className="pge-top"><div className="pge-name">{selectedProgressEx}</div>{progGraphGain&&parseFloat(progGraphGain)>0&&<div className="pge-gain">{progGraphGain} ↑</div>}</div>
-                  <div className="pge-graph"><MiniGraph data={progGraphData}/></div>
-                  {progGraphData.length>=2&&<div className="pge-range"><div className="pge-start">{progGraphData[0].kg}{units} — start</div><div className="pge-end">{progGraphData[progGraphData.length-1].kg}{units} latest</div></div>}
-                </div>
-              )}
-              {selectedProgressEx&&!progGraphData&&(
-                <div style={{background:"var(--white)",border:"1.5px solid var(--border)",borderRadius:14,padding:"20px 16px",textAlign:"center",boxShadow:"var(--sh)"}}>
-                  <div style={{fontSize:13,color:"var(--ink3)"}}>Log at least 2 sessions of {selectedProgressEx} to see your curve.</div>
-                </div>
-              )}
-              {!selectedProgressEx&&(
-                <div style={{background:"var(--surface)",borderRadius:12,padding:"14px 16px"}}>
-                  <div style={{fontSize:13,color:"var(--ink3)"}}>Type an exercise name above to see your strength progression over time.</div>
-                </div>
-              )}
-            </div>
-          )}
+            );
+            return(
+              <div className="u2">
+                <div className="lbl">Strength progress</div>
+                {exWithProgress.map(ex=>(
+                  <div key={ex.name} style={{background:"var(--white)",border:"1.5px solid var(--border)",borderRadius:16,padding:"16px",boxShadow:"var(--sh)",marginBottom:8}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+                      <div>
+                        <div style={{fontSize:15,fontWeight:700,color:"var(--ch)"}}>{ex.name}</div>
+                        <div style={{fontSize:12,color:"var(--ink3)",marginTop:2}}>{ex.sessions} sessions logged</div>
+                      </div>
+                      {ex.diff>0&&<div style={{background:"var(--green-l)",color:"var(--green)",border:"1px solid var(--green-m)",borderRadius:20,padding:"3px 10px",fontSize:12,fontWeight:700}}>+{ex.diff}{units} ↑</div>}
+                      {ex.diff<0&&<div style={{background:"var(--orange-l)",color:"var(--orange)",border:"1px solid var(--orange-m)",borderRadius:20,padding:"3px 10px",fontSize:12,fontWeight:700}}>{ex.diff}{units}</div>}
+                      {ex.diff===0&&<div style={{background:"var(--surface)",color:"var(--ink3)",borderRadius:20,padding:"3px 10px",fontSize:12,fontWeight:600}}>Same</div>}
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:12}}>
+                      <div style={{flex:1,textAlign:"center"}}>
+                        <div style={{fontSize:11,fontWeight:600,color:"var(--ink3)",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.8px"}}>First</div>
+                        <div style={{fontSize:28,fontWeight:800,color:"var(--ink3)",letterSpacing:"-0.5px"}}>{ex.first}</div>
+                        <div style={{fontSize:11,color:"var(--ink3)"}}>{units}</div>
+                      </div>
+                      <div style={{fontSize:24,color:"var(--ink3)"}}>→</div>
+                      <div style={{flex:1,textAlign:"center"}}>
+                        <div style={{fontSize:11,fontWeight:600,color:"var(--ch)",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.8px"}}>Latest</div>
+                        <div style={{fontSize:28,fontWeight:800,color:"var(--ch)",letterSpacing:"-0.5px"}}>{ex.last}</div>
+                        <div style={{fontSize:11,color:"var(--ink3)"}}>{units}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* Recent sessions */}
           {sessionLog.length>0&&(
@@ -1028,8 +1031,8 @@ export default function App() {
           {!user&&(
             <div style={{margin:"0 0 4px",background:"var(--orange-l)",borderTop:"1px solid var(--orange-m)",borderBottom:"1px solid var(--orange-m)",padding:"12px 20px"}}>
               <div style={{fontSize:13,color:"var(--orange)",fontWeight:700,marginBottom:4}}>You're using guest mode</div>
-              <div style={{fontSize:12,color:"var(--ink3)",marginBottom:8}}>Your data is saved locally. Create an account to back it up to the cloud.</div>
-              <button className="btn-p" style={{padding:"10px",fontSize:13}} onClick={()=>{ setSkipAuth(false); setScreen("splash"); }}>Create account</button>
+              <div style={{fontSize:12,color:"var(--ink3)",marginBottom:8}}>Your data is saved locally. Sign in to back it up to the cloud.</div>
+              <button className="google-btn" style={{fontSize:13,padding:"10px"}} onClick={async()=>await signInWithGoogle()}>{TI.google} Sign in with Google</button>
             </div>
           )}
 
