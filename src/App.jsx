@@ -791,9 +791,6 @@ export default function App() {
               const todaySessEntry=trainedSess?sessionLog.find(s=>s.dayName===trainedSess&&new Date(s.date).toDateString()===new Date(today.getTime()-(todayMonIdx-i)*86400000).toDateString()):null;
               const isPartialDay=done&&todaySessEntry?.partial;
               const partialPct=isPartialDay?getSessPct(trainedSess):100;
-              const filled=(partialPct/100)*CIRC;
-              const dateColor=done?(isPartialDay?"var(--orange)":"var(--green)"):isToday||isViewing?"var(--orange)":"var(--ink3)";
-              const dateFw=isToday||isViewing?800:done?700:600;
               const showCard=isToday||isViewing;
               const dateColor=done?(isPartialDay?"var(--orange)":"var(--green)"):isViewing?"var(--orange)":"var(--ink3)";
               const dateFw=isToday||done?700:600;
