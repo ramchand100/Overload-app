@@ -463,7 +463,7 @@ const CIRC=2*Math.PI*16;
    MAIN APP
 ═══════════════════════════════════════ */
 export default function App() {
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, loading: authLoading, signOut, signInWithGoogle } = useAuth();
   const {
     profile, programs: dbPrograms, sessionLog: dbSessionLog,
     workoutState: dbWorkoutState, loading: dataLoading,
