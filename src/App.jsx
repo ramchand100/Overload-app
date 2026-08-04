@@ -471,16 +471,27 @@ export default function App() {
     saveSession, saveWorkoutState, updateProfile
   } = useData(user);
 
-  const [screen, setScreen] = useState("splash");
+  const [screen, setScreen] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('overload_programs'));
+      return (saved && saved.length > 0) ? "main" : "splash";
+    } catch { return "splash"; }
+  });
   const [showAddWorkout, setShowAddWorkout] = useState(false);
   const [obFreq, setObFreq] = useState(null);
   const [obSplit, setObSplit] = useState(null);
   const [obExs, setObExs] = useState({});
   const [obExStep, setObExStep] = useState(0);
-  // Local state (synced to Supabase on changes)
-  const [programs, setPrograms] = useState([]);
-  const [sessionLog, setSessionLog] = useState([]);
-  const [wSets, setWSets] = useState({});
+  // Local state (synced to Supabase on changes, persisted to localStorage for guests)
+  const [programs, setPrograms] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('overload_programs')) || []; } catch { return []; }
+  });
+  const [sessionLog, setSessionLog] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('overload_sessionLog')) || []; } catch { return []; }
+  });
+  const [wSets, setWSets] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('overload_wSets')) || {}; } catch { return {}; }
+  });
   const [tab, setTab] = useState("home");
   const [sessionScreen, setSessionScreen] = useState(null);
   const [editingDay, setEditDay] = useState(null);
@@ -499,6 +510,11 @@ export default function App() {
   const [notifEnabled, setNotif] = useState(false);
   const [toast, setToast] = useState(null);
   const toastRef = useRef(null);
+
+  // Persist guest data locally so it survives page reloads / OAuth redirects
+  useEffect(() => { localStorage.setItem('overload_programs', JSON.stringify(programs)); }, [programs]);
+  useEffect(() => { localStorage.setItem('overload_sessionLog', JSON.stringify(sessionLog)); }, [sessionLog]);
+  useEffect(() => { localStorage.setItem('overload_wSets', JSON.stringify(wSets)); }, [wSets]);
 
   // Sync Supabase data to local state when loaded
   useEffect(() => {
@@ -519,6 +535,26 @@ export default function App() {
       if (dbPrograms.length > 0 && screen === 'splash') setScreen('main');
     }
   }, [user, dataLoading, dbPrograms, dbSessionLog, dbWorkoutState, profile]);
+
+  // One-time migration: push guest data (from localStorage) into the new account
+  useEffect(() => {
+    if (!user || dataLoading) return;
+    if (localStorage.getItem('overload_migrated') === 'true') return;
+    if (dbPrograms.length === 0 && (programs.length > 0 || sessionLog.length > 0)) {
+      localStorage.setItem('overload_migrated', 'true');
+      (async () => {
+        for (const prog of programs) await saveProgram(prog);
+        for (const sess of [...sessionLog].reverse()) await saveSession(sess);
+        for (const [exName, sets] of Object.entries(wSets)) await saveWorkoutState(exName, sets);
+        localStorage.removeItem('overload_programs');
+        localStorage.removeItem('overload_sessionLog');
+        localStorage.removeItem('overload_wSets');
+        setScreen('main');
+      })();
+    } else {
+      localStorage.setItem('overload_migrated', 'true');
+    }
+  }, [user, dataLoading]);
 
   const showToast = msg => {
     setToast(msg);
@@ -936,6 +972,11 @@ export default function App() {
             <div className="stat-mini"><div className="stat-mini-lbl">Sessions</div><div className="stat-mini-val">{sessionLog.length}</div><div className="stat-mini-sub">Total</div></div>
             <div className="stat-mini"><div className="stat-mini-lbl">Sets</div><div className="stat-mini-val">{weekStats.sets}</div><div className="stat-mini-sub">All time</div></div>
             <div className="stat-mini"><div className="stat-mini-lbl">Volume</div><div className="stat-mini-val">{weekStats.weight>=1000?`${(weekStats.weight/1000).toFixed(1)}k`:weekStats.weight}</div><div className="stat-mini-sub">{units} lifted</div></div>
+          </div>
+
+          {/* Calendar */}
+          <div className="u1" style={{background:"var(--white)",border:"1.5px solid var(--border)",borderRadius:16,padding:"16px",boxShadow:"var(--sh)",marginBottom:12}}>
+            <CalendarView sessionLog={sessionLog}/>
           </div>
 
           {/* Strength — before/after cards per exercise */}
