@@ -8,6 +8,12 @@ export function useData(user) {
   const [workoutState, setWorkoutState] = useState({})
   const [loading, setLoading] = useState(true)
 
+  // Local (not UTC) YYYY-MM-DD key — avoids the toDateString() locale/timezone edge cases
+  const localDateKey = ts => {
+    const d = new Date(ts)
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+  }
+
   // Load all data when user logs in
   useEffect(() => {
     if (!user) { setLoading(false); return }
@@ -80,44 +86,54 @@ export function useData(user) {
       .select()
       .single()
     if (data) setPrograms(p => [...p, data])
-    return { error }
+    return { error, data }
   }
 
-  // Delete a program (by day name)
+  // Delete a single day from a program (only removes the whole program row if no days remain)
   const deleteProgram = async (dayName) => {
     const prog = programs.find(p => p.days.includes(dayName))
-    if (!prog) return
-    await supabase.from('programs').delete().eq('id', prog.id)
-    setPrograms(p => p.filter(pr => pr.id !== prog.id))
+    if (!prog) return { error: null }
+    const newDays = prog.days.filter(d => d !== dayName)
+    const newExercises = { ...prog.exercises }
+    delete newExercises[dayName]
+    if (newDays.length === 0) {
+      const { error } = await supabase.from('programs').delete().eq('id', prog.id)
+      if (!error) setPrograms(p => p.filter(pr => pr.id !== prog.id))
+      return { error }
+    }
+    const { error } = await supabase.from('programs')
+      .update({ days: newDays, exercises: newExercises })
+      .eq('id', prog.id)
+    if (!error) setPrograms(p => p.map(pr => pr.id === prog.id ? { ...pr, days: newDays, exercises: newExercises } : pr))
+    return { error }
   }
 
   // Update program exercises
   const updateProgramExercises = async (dayName, exercises) => {
     const prog = programs.find(p => p.days.includes(dayName))
-    if (!prog) return
+    if (!prog) return { error: new Error('Program not found') }
     const newExs = { ...prog.exercises, [dayName]: exercises }
-    await supabase.from('programs').update({ exercises: newExs }).eq('id', prog.id)
-    setPrograms(p => p.map(pr => pr.id === prog.id ? { ...pr, exercises: newExs } : pr))
+    const { error } = await supabase.from('programs').update({ exercises: newExs }).eq('id', prog.id)
+    if (!error) setPrograms(p => p.map(pr => pr.id === prog.id ? { ...pr, exercises: newExs } : pr))
+    return { error }
   }
 
-  // Save a session
+  // Save a session — DB write happens first; caller should only update UI on success
   const saveSession = async (session) => {
-    const todayStr = new Date().toDateString()
-    // Check if session already exists today for this day
+    const todayKey = localDateKey(Date.now())
     const existing = sessionLog.find(s =>
       s.dayName === session.dayName &&
-      new Date(s.date).toDateString() === todayStr
+      localDateKey(s.date) === todayKey
     )
     if (existing) {
-      // Update existing
-      await supabase.from('sessions').update({
+      const { error } = await supabase.from('sessions').update({
         exercises: session.exercises,
         partial: session.partial
       }).eq('id', existing.id)
-      setSessionLog(p => p.map(s => s.id === existing.id ? { ...s, ...session } : s))
+      if (!error) setSessionLog(p => p.map(s => s.id === existing.id ? { ...s, ...session } : s))
+      return { error }
     } else {
-      // Insert new
-      const { data } = await supabase.from('sessions').insert({
+      const { data, error } = await supabase.from('sessions').insert({
         user_id: user.id,
         day_name: session.dayName,
         exercises: session.exercises,
@@ -130,29 +146,51 @@ export function useData(user) {
         exercises: data.exercises,
         partial: data.partial
       }, ...p])
+      return { error, data }
     }
   }
 
   // Save workout state (last weights per exercise)
   const saveWorkoutState = async (exerciseName, sets) => {
-    await supabase.from('workout_state').upsert({
+    const { error } = await supabase.from('workout_state').upsert({
       user_id: user.id,
       exercise_name: exerciseName,
       sets: sets,
       updated_at: new Date().toISOString()
     }, { onConflict: 'user_id,exercise_name' })
-    setWorkoutState(p => ({ ...p, [exerciseName]: sets }))
+    if (!error) setWorkoutState(p => ({ ...p, [exerciseName]: sets }))
+    return { error }
   }
 
   // Update profile
   const updateProfile = async (updates) => {
-    await supabase.from('profiles').update(updates).eq('id', user.id)
-    setProfile(p => ({ ...p, ...updates }))
+    const { error } = await supabase.from('profiles').update(updates).eq('id', user.id)
+    if (!error) setProfile(p => ({ ...p, ...updates }))
+    return { error }
+  }
+
+  // Delete all of the user's data and sign out.
+  // NOTE: this removes their rows from every table (sessions, workout_state, programs, profiles)
+  // and signs them out. It does NOT delete the underlying Supabase auth.users record itself —
+  // that requires the service-role key and must be done from a server-side Edge Function, not
+  // from the browser. Wire this up to a Supabase Edge Function if full account deletion (so the
+  // email could be reused to sign up fresh) is required.
+  const deleteAccount = async () => {
+    try {
+      await supabase.from('sessions').delete().eq('user_id', user.id)
+      await supabase.from('workout_state').delete().eq('user_id', user.id)
+      await supabase.from('programs').delete().eq('user_id', user.id)
+      await supabase.from('profiles').delete().eq('id', user.id)
+      await supabase.auth.signOut()
+      return { error: null }
+    } catch (error) {
+      return { error }
+    }
   }
 
   return {
     profile, programs, sessionLog, workoutState, loading,
     saveProgram, deleteProgram, updateProgramExercises,
-    saveSession, saveWorkoutState, updateProfile, loadAllData
+    saveSession, saveWorkoutState, updateProfile, deleteAccount, loadAllData
   }
 }
