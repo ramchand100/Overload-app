@@ -537,7 +537,7 @@ export default function App() {
     profile, programs: dbPrograms, sessionLog: dbSessionLog,
     workoutState: dbWorkoutState, loading: dataLoading,
     saveProgram, deleteProgram, updateProgramExercises,
-    saveSession, saveWorkoutState, updateProfile, deleteAccount
+    saveSession, deleteSession, saveWorkoutState, updateProfile, deleteAccount
   } = useData(user);
 
   const [screen, setScreen] = useState(() => {
@@ -868,9 +868,41 @@ export default function App() {
     const pct=tot>0?Math.round(done/tot*100):0;
     const hasAnyDone=anyDone(dayName);
     const quickAdds=getExLib(dayName).filter(e=>!exNames.includes(e)).slice(0,6);
-    const handleReset=()=>{
-      setWSets(p=>{const next={...p};exNames.forEach(ex=>{next[ex]=(p[ex]||[]).map(s=>({...s,done:false,typed:false,w:s.lastW!=="—"?s.lastW:"",r:s.lastR!=="—"?s.lastR:""}));});return next;});
+    const getLastForEx = (exName, excludeId, log) => {
+      for (const s of log) {
+        if (s.id === excludeId) continue;
+        const exData = s.exercises.find(e => e.name === exName);
+        if (exData && exData.sets.length) {
+          const best = exData.sets.reduce((a,b)=>(parseFloat(b.w)||0)>(parseFloat(a.w)||0)?b:a, exData.sets[0]);
+          return { w: best.w, r: best.r };
+        }
+      }
+      return null;
+    };
+    const handleReset = async () => {
+      const todayKey = localDateStr(Date.now());
+      const completedToday = sessionLog.find(s => s.dayName===dayName && localDateStr(s.date)===todayKey);
+      if (completedToday) {
+        // A session was already saved for today — actually clear it, not just the on-screen taps
+        if (user) {
+          const {error} = await deleteSession(completedToday.id);
+          if (error) { showToast("Couldn't reset — try again"); return; }
+        }
+        const remainingLog = sessionLog.filter(s => s.id !== completedToday.id);
+        if (!user) setSessionLog(remainingLog);
+        const freshWSets = {};
+        exNames.forEach(ex => {
+          const last = getLastForEx(ex, completedToday.id, remainingLog);
+          freshWSets[ex] = [{w:"",r:"",done:false,lastW:last?last.w:"—",lastR:last?last.r:"—",typed:false}];
+        });
+        if (user) { for (const ex of exNames) await saveWorkoutState(ex, freshWSets[ex]); }
+        else setWSets(p => ({...p, ...freshWSets}));
+      } else {
+        // Nothing saved yet — just clear the unsaved taps on screen
+        setWSets(p=>{const next={...p};exNames.forEach(ex=>{next[ex]=(p[ex]||[]).map(s=>({...s,done:false,typed:false,w:s.lastW!=="—"?s.lastW:"",r:s.lastR!=="—"?s.lastR:""}));});return next;});
+      }
       setCollapsedDone({});
+      showToast(`${dayName} reset`);
     };
     return(
       <div className="app"><style>{S}</style>
@@ -963,7 +995,7 @@ export default function App() {
                     <svg className="ws-ring-svg" viewBox="0 0 38 38">
                       <circle cx="19" cy="19" r="16" fill="none" stroke="#D0D0D0" strokeWidth="1.5" strokeDasharray="4 3"/>
                       {done&&!isPartialDay&&<circle cx="19" cy="19" r="16" fill="rgba(45,122,58,.07)" stroke="var(--green)" strokeWidth="3"/>}
-                      {done&&isPartialDay&&<circle cx="19" cy="19" r="16" fill="none" stroke="var(--orange)" strokeWidth="3" strokeDasharray={`${(partialPct/100)*CIRC} ${CIRC}`} strokeDashoffset={CIRC/4} style={{transform:"rotate(-90deg)",transformOrigin:"19px 19px"}}/>}
+                      {done&&isPartialDay&&<circle cx="19" cy="19" r="16" fill="none" stroke="var(--orange)" strokeWidth="3" strokeDasharray={`${(partialPct/100)*CIRC} ${CIRC}`} style={{transform:"rotate(-90deg)",transformOrigin:"19px 19px"}}/>}
                       {done&&isPartialDay&&<circle cx="19" cy="19" r="14" fill="var(--white)"/>}
                     </svg>
                     <div className="ws-ring-inner"><span className="ws-date-num" style={{color:dateColor,fontWeight:dateFw}}>{String(weekDates[i]).padStart(2,"0")}</span></div>
