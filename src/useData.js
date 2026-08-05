@@ -150,6 +150,13 @@ export function useData(user) {
     }
   }
 
+  // Delete a saved session (used by "Reset" when a session was already logged for the day)
+  const deleteSession = async (sessionId) => {
+    const { error } = await supabase.from('sessions').delete().eq('id', sessionId)
+    if (!error) setSessionLog(p => p.filter(s => s.id !== sessionId))
+    return { error }
+  }
+
   // Save workout state (last weights per exercise)
   const saveWorkoutState = async (exerciseName, sets) => {
     const { error } = await supabase.from('workout_state').upsert({
@@ -191,6 +198,6 @@ export function useData(user) {
   return {
     profile, programs, sessionLog, workoutState, loading,
     saveProgram, deleteProgram, updateProgramExercises,
-    saveSession, saveWorkoutState, updateProfile, deleteAccount, loadAllData
+    saveSession, deleteSession, saveWorkoutState, updateProfile, deleteAccount, loadAllData
   }
 }
