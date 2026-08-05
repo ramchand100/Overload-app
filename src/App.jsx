@@ -41,7 +41,36 @@ const MiniGraph = ({ data }) => {
   );
 };
 
-/* ── Calendar ── */
+/* Weight progression chart — used inside expanded Strength curve cards */
+const WeightChart = ({ points }) => {
+  if(!points||points.length<2) return <div style={{height:90,display:"flex",alignItems:"center",justifyContent:"center",color:"var(--ink3)",fontSize:12}}>Log 2+ sessions to see this chart</div>;
+  const W=280,H=110,padL=26,padR=10,padT=18,padB=20;
+  const vals=points.map(p=>p.weight);
+  const min=Math.min(...vals),max=Math.max(...vals);
+  const range=(max-min)||1;
+  const innerW=W-padL-padR, innerH=H-padT-padB;
+  const xy=points.map((p,i)=>[padL+(i/(points.length-1))*innerW, padT+innerH-((p.weight-min)/range)*innerH]);
+  let d=`M ${xy[0]}`;
+  for(let i=1;i<xy.length;i++) d+=` L ${xy[i]}`;
+  const gridVals=[min,(min+max)/2,max];
+  return(
+    <svg width="100%" height={H+16} viewBox={`0 0 ${W} ${H+16}`} preserveAspectRatio="none">
+      {gridVals.map((gv,i)=>{
+        const y=padT+innerH-((gv-min)/range)*innerH;
+        return(<g key={i}>
+          <line x1={padL} y1={y} x2={W-padR} y2={y} stroke="var(--border)" strokeWidth="1" strokeDasharray="3,3"/>
+          <text x={0} y={y+3} fontSize="9" fill="var(--ink3)" fontFamily="Inter,sans-serif">{Math.round(gv)}</text>
+        </g>);
+      })}
+      <path d={d} fill="none" stroke="var(--green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+      {xy.map(([x,y],i)=>(<circle key={i} cx={x} cy={y} r="3.5" fill="var(--white)" stroke="var(--green)" strokeWidth="2"/>))}
+      <text x={xy[xy.length-1][0]} y={xy[xy.length-1][1]-8} textAnchor="end" fontSize="10" fill="var(--green)" fontWeight="700" fontFamily="Inter,sans-serif">{vals[vals.length-1]}kg</text>
+      {points.map((p,i)=>(<text key={i} x={xy[i][0]} y={H+12} textAnchor="middle" fontSize="8.5" fill="var(--ink3)" fontFamily="Inter,sans-serif">{new Date(p.date).toLocaleDateString("en-GB",{weekday:"short",day:"numeric"})}</text>))}
+    </svg>
+  );
+};
+
+
 const CalendarView = ({ sessionLog }) => {
   const [offset, setOffset] = useState(0);
   const [selDate, setSelDate] = useState(null);
@@ -354,6 +383,45 @@ const S = `
   .stat-mini-lbl{font-size:10px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
   .stat-mini-val{font-size:22px;font-weight:800;letter-spacing:-.4px;line-height:1;color:var(--ch)}
   .stat-mini-sub{font-size:10px;color:var(--ink3);margin-top:2px}
+  /* Progress header + hero */
+  .prog-hdr-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px}
+  .prog-month{font-size:13px;color:var(--ink3);font-weight:600}
+  .prog-hero{background:linear-gradient(135deg,#2D7A3A 0%,#1F5C2A 100%);border-radius:20px;padding:22px 20px;position:relative;overflow:hidden;margin-bottom:14px}
+  .prog-hero-blob{position:absolute;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.06);top:-70px;right:-60px}
+  .prog-hero-lbl{font-size:11px;color:rgba(255,255,255,.7);font-weight:700;text-transform:uppercase;letter-spacing:1.4px;margin-bottom:8px;position:relative}
+  .prog-hero-title{font-size:28px;font-weight:800;color:white;letter-spacing:-.5px;position:relative;margin-bottom:6px;line-height:1.1}
+  .prog-hero-sub{font-size:14px;color:rgba(255,255,255,.8);position:relative;margin-bottom:16px}
+  .prog-hero-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;position:relative}
+  .phs-item{background:rgba(255,255,255,.14);border-radius:12px;padding:10px 6px;text-align:center}
+  .phs-val{font-size:20px;font-weight:800;color:white;line-height:1}
+  .phs-lbl{font-size:11px;color:rgba(255,255,255,.75);margin-top:3px}
+  /* Segmented control: Strength / Calendar / History */
+  .seg-ctrl{display:flex;background:var(--surface);border-radius:100px;padding:4px;gap:2px;margin-bottom:16px}
+  .seg-opt{flex:1;text-align:center;padding:9px 0;border-radius:100px;font-size:13px;font-weight:700;color:var(--ink3);cursor:pointer;transition:all .15s}
+  .seg-opt.on{background:var(--white);color:var(--ch);box-shadow:var(--sh)}
+  /* Range pills (Week/1M/6M/1Y/All) */
+  .range-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px}
+  .range-pills{display:flex;gap:4px;overflow-x:auto}
+  .range-pill{flex-shrink:0;padding:5px 11px;border-radius:100px;font-size:12px;font-weight:700;color:var(--ink3);background:var(--surface);cursor:pointer;white-space:nowrap}
+  .range-pill.on{background:var(--ch);color:white}
+  /* Category tabs (Push/Pull/Legs) */
+  .cat-tabs{display:flex;background:var(--white);border:1.5px solid var(--border);border-radius:14px;box-shadow:var(--sh);margin-bottom:12px;overflow:hidden}
+  .cat-tab{flex:1;text-align:center;padding:12px 4px;font-size:14px;font-weight:700;color:var(--ink3);cursor:pointer;border-bottom:2.5px solid transparent}
+  .cat-tab.on{color:var(--green);border-bottom-color:var(--green)}
+  /* Strength curve card */
+  .str-card{background:var(--white);border:1.5px solid var(--border);border-radius:16px;box-shadow:var(--sh);margin-bottom:8px;overflow:hidden}
+  .str-card-hdr{padding:14px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;gap:10px}
+  .str-card-name{font-size:15px;font-weight:700;color:var(--ch)}
+  .str-card-sub{font-size:12px;color:var(--ink3);margin-top:2px}
+  .str-card-nums{display:flex;align-items:baseline;gap:6px;font-size:13px;color:var(--ink3);white-space:nowrap}
+  .str-card-body{padding:0 16px 16px;border-top:1px solid var(--border)}
+  .chart-hdr{display:flex;justify-content:space-between;align-items:center;margin:14px 0 8px;font-size:13px}
+  .chart-title{font-weight:700;color:var(--ch)}
+  .chart-delta{font-weight:700;color:var(--green)}
+  .chart-stats-row{display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+  .chart-stat{text-align:center;flex:1}
+  .chart-stat-lbl{font-size:11px;color:var(--ink3);margin-bottom:2px}
+  .chart-stat-val{font-size:15px;font-weight:800;color:var(--ch)}
   .split-cards-wrap{overflow-x:auto;margin:0 -18px;padding:0 18px}
   .split-cards-wrap::-webkit-scrollbar{display:none}
   .split-cards-row{display:flex;gap:10px;width:max-content}
@@ -510,6 +578,10 @@ export default function App() {
   const [notifEnabled, setNotif] = useState(false);
   const [toast, setToast] = useState(null);
   const toastRef = useRef(null);
+  const [progSubTab, setProgSubTab] = useState("strength");
+  const [progRange, setProgRange] = useState("All");
+  const [progExCat, setProgExCat] = useState(null);
+  const [expandedStr, setExpStr] = useState({});
 
   // Persist guest data locally so it survives page reloads / OAuth redirects
   useEffect(() => { localStorage.setItem('overload_programs', JSON.stringify(programs)); }, [programs]);
@@ -956,101 +1028,149 @@ export default function App() {
         </div>
       )}
 
-      {/* PROGRESS — redesigned */}
-      {tab==="progress"&&(
-        <div className="prog-scroll">
-          {/* PR Card */}
-          <div className="pr-card u0">
-            <div className="pr-blob"/>
-            {prData?(<><div className="pr-lbl">Best improvement 🏆</div><div className="pr-ex-name">{prData.ex}</div><div className="pr-nums"><span className="pr-from">{prData.from}</span><span className="pr-arrow">→</span><span className="pr-to">{prData.to}</span><span className="pr-unit">{units}</span></div><div className="pr-sub">+{prData.gain}{units} total improvement</div></>):(
-              <><div className="pr-lbl">Best improvement 🏆</div><div style={{fontSize:14,color:"rgba(255,255,255,.45)",position:"relative",marginTop:4}}>Log sessions to see your best improvement here.</div></>
-            )}
-          </div>
+      {/* PROGRESS — redesigned to match Overload Web reference */}
+      {tab==="progress"&&(()=>{
+        const now=new Date();
+        const monthSessions=sessionLog.filter(s=>{const d=new Date(s.date);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
+        const monthSets=monthSessions.reduce((a,s)=>a+s.exercises.reduce((b,e)=>b+e.sets.length,0),0);
+        const monthVolume=monthSessions.reduce((a,s)=>a+s.exercises.reduce((b,e)=>b+e.sets.reduce((c,st)=>c+(parseFloat(st.w)||0)*(parseFloat(st.r)||0),0),0),0);
+        const monthLabel=now.toLocaleDateString("en-US",{month:"long",year:"numeric"});
+        const categories=[...new Set(programs.flatMap(p=>p.days||[]))];
+        const activeCat=(progExCat&&categories.includes(progExCat))?progExCat:categories[0];
+        const exToCat={};
+        programs.forEach(p=>Object.entries(p.exs||{}).forEach(([day,exs])=>(exs||[]).forEach(e=>{if(!exToCat[e])exToCat[e]=day;})));
+        const rangeDays={Week:7,"1M":30,"6M":182,"1Y":365,All:100000}[progRange];
+        const rangeCutoff=Date.now()-rangeDays*86400000;
+        const allTrackedExs=[...new Set(sessionLog.flatMap(s=>s.exercises.map(e=>e.name)))].filter(name=>!activeCat||exToCat[name]===activeCat);
+        const exWithProgress=allTrackedExs.map(exName=>{
+          const sessWithEx=sessionLog.filter(s=>s.exercises.some(e=>e.name===exName)&&new Date(s.date).getTime()>=rangeCutoff).slice().reverse();
+          const series=sessWithEx.map(s=>{
+            const exData=s.exercises.find(e=>e.name===exName);
+            const maxW=Math.max(...exData.sets.map(st=>parseFloat(st.w)||0).filter(v=>v>0));
+            return{date:s.date,weight:maxW};
+          }).filter(p=>p.weight>0);
+          if(series.length===0)return null;
+          const first=series[0].weight,last=series[series.length-1].weight;
+          const pct=first?Math.round(((last-first)/first)*100):0;
+          return{name:exName,series,first,last,sessions:series.length,pct};
+        }).filter(Boolean);
+        const rangeFilteredSessions=sessionLog.filter(s=>new Date(s.date).getTime()>=rangeCutoff);
 
-          {/* 3 stat cards */}
-          <div className="stats-row u1">
-            <div className="stat-mini"><div className="stat-mini-lbl">Sessions</div><div className="stat-mini-val">{sessionLog.length}</div><div className="stat-mini-sub">Total</div></div>
-            <div className="stat-mini"><div className="stat-mini-lbl">Sets</div><div className="stat-mini-val">{weekStats.sets}</div><div className="stat-mini-sub">All time</div></div>
-            <div className="stat-mini"><div className="stat-mini-lbl">Volume</div><div className="stat-mini-val">{weekStats.weight>=1000?`${(weekStats.weight/1000).toFixed(1)}k`:weekStats.weight}</div><div className="stat-mini-sub">{units} lifted</div></div>
-          </div>
+        return(
+          <div className="prog-scroll">
+            <div className="prog-hdr-row u0"><div className="lbl" style={{marginBottom:0}}>Progress</div><div className="prog-month">{monthLabel}</div></div>
 
-          {/* Calendar */}
-          <div className="u1" style={{background:"var(--white)",border:"1.5px solid var(--border)",borderRadius:16,padding:"16px",boxShadow:"var(--sh)",marginBottom:12}}>
-            <CalendarView sessionLog={sessionLog}/>
-          </div>
-
-          {/* Strength — before/after cards per exercise */}
-          {sessionLog.length>0&&(()=>{
-            const allTrackedExs=[...new Set(sessionLog.flatMap(s=>s.exercises.map(e=>e.name)))];
-            const exWithProgress=allTrackedExs.map(exName=>{
-              const sessWithEx=sessionLog.filter(s=>s.exercises.some(e=>e.name===exName)).reverse();
-              if(sessWithEx.length<2)return null;
-              const first=sessWithEx[0].exercises.find(e=>e.name===exName);
-              const last=sessWithEx[sessWithEx.length-1].exercises.find(e=>e.name===exName);
-              if(!first||!last)return null;
-              const firstMax=Math.max(...first.sets.map(s=>parseFloat(s.w)||0).filter(v=>v>0));
-              const lastMax=Math.max(...last.sets.map(s=>parseFloat(s.w)||0).filter(v=>v>0));
-              if(!firstMax||!lastMax)return null;
-              return{name:exName,first:firstMax,last:lastMax,diff:lastMax-firstMax,sessions:sessWithEx.length};
-            }).filter(Boolean);
-            if(!exWithProgress.length)return(
-              <div className="u2" style={{background:"var(--white)",border:"1.5px solid var(--border)",borderRadius:16,padding:"20px 16px",boxShadow:"var(--sh)",textAlign:"center"}}>
-                <div style={{fontSize:28,marginBottom:8}}>📈</div>
-                <div style={{fontSize:14,fontWeight:600,color:"var(--ch)",marginBottom:4}}>Strength Progress</div>
-                <div style={{fontSize:13,color:"var(--ink3)"}}>Log at least 2 sessions of any exercise to see your progress here.</div>
+            {/* Hero card */}
+            <div className="prog-hero u0">
+              <div className="prog-hero-blob"/>
+              <div className="prog-hero-lbl">This month</div>
+              {monthSessions.length===0?(
+                <><div className="prog-hero-title">Log a workout</div><div className="prog-hero-sub">Your progress will show up here</div></>
+              ):(
+                <><div className="prog-hero-title">{monthSessions.length} workout{monthSessions.length!==1?"s":""} logged</div><div className="prog-hero-sub">Keep up the momentum</div></>
+              )}
+              <div className="prog-hero-stats">
+                <div className="phs-item"><div className="phs-val">{monthSessions.length}</div><div className="phs-lbl">sessions</div></div>
+                <div className="phs-item"><div className="phs-val">{monthSets}</div><div className="phs-lbl">sets</div></div>
+                <div className="phs-item"><div className="phs-val">{monthVolume>=1000?`${(monthVolume/1000).toFixed(1)}k`:monthVolume}</div><div className="phs-lbl">volume</div></div>
               </div>
-            );
-            return(
+            </div>
+
+            {/* Segmented control */}
+            <div className="seg-ctrl u1">
+              {[{id:"strength",label:"Strength"},{id:"calendar",label:"Calendar"},{id:"history",label:"History"}].map(s=>(
+                <div key={s.id} className={`seg-opt${progSubTab===s.id?" on":""}`} onClick={()=>setProgSubTab(s.id)}>{s.label}</div>
+              ))}
+            </div>
+
+            {progSubTab==="strength"&&(
               <div className="u2">
-                <div className="lbl">Strength progress</div>
-                {exWithProgress.map(ex=>(
-                  <div key={ex.name} style={{background:"var(--white)",border:"1.5px solid var(--border)",borderRadius:16,padding:"16px",boxShadow:"var(--sh)",marginBottom:8}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
-                      <div>
-                        <div style={{fontSize:15,fontWeight:700,color:"var(--ch)"}}>{ex.name}</div>
-                        <div style={{fontSize:12,color:"var(--ink3)",marginTop:2}}>{ex.sessions} sessions logged</div>
+                <div className="range-row">
+                  <div className="lbl" style={{marginBottom:0}}>Strength curves</div>
+                  <div className="range-pills">
+                    {["Week","1M","6M","1Y","All"].map(r=><div key={r} className={`range-pill${progRange===r?" on":""}`} onClick={()=>setProgRange(r)}>{r}</div>)}
+                  </div>
+                </div>
+                {categories.length>0&&(
+                  <div className="cat-tabs">
+                    {categories.map(c=><div key={c} className={`cat-tab${activeCat===c?" on":""}`} onClick={()=>setProgExCat(c)}>{c}</div>)}
+                  </div>
+                )}
+                {exWithProgress.length===0?(
+                  <div style={{background:"var(--white)",border:"1.5px solid var(--border)",borderRadius:16,padding:"20px 16px",boxShadow:"var(--sh)",textAlign:"center"}}>
+                    <div style={{fontSize:28,marginBottom:8}}>📈</div>
+                    <div style={{fontSize:14,fontWeight:600,color:"var(--ch)",marginBottom:4}}>No data in this range</div>
+                    <div style={{fontSize:13,color:"var(--ink3)"}}>Log sessions for this category to see strength curves here.</div>
+                  </div>
+                ):exWithProgress.map(ex=>{
+                  const diff=ex.last-ex.first;
+                  const open=!!expandedStr[ex.name];
+                  return(
+                    <div key={ex.name} className="str-card">
+                      <div className="str-card-hdr" onClick={()=>setExpStr(p=>({...p,[ex.name]:!p[ex.name]}))}>
+                        <div>
+                          <div className="str-card-name" style={{color:"var(--green)"}}>{ex.name}</div>
+                          <div className="str-card-sub">{ex.sessions} session{ex.sessions!==1?"s":""}</div>
+                        </div>
+                        <div style={{display:"flex",alignItems:"center",gap:8}}>
+                          <div className="str-card-nums">
+                            <span style={{color:"var(--ink3)"}}>{ex.first}</span> <span style={{color:"var(--ink3)"}}>→</span> <b style={{color:"var(--ch)",fontSize:15}}>{ex.last}{units}</b>
+                            {diff!==0&&<span style={{background:diff>0?"var(--green-l)":"var(--orange-l)",color:diff>0?"var(--green)":"var(--orange)",borderRadius:20,padding:"2px 8px",fontWeight:700,fontSize:11,marginLeft:4}}>{diff>0?"+":""}{ex.pct}%</span>}
+                          </div>
+                          <span className={`hist-sess-chev${open?" open":""}`}>▼</span>
+                        </div>
                       </div>
-                      {ex.diff>0&&<div style={{background:"var(--green-l)",color:"var(--green)",border:"1px solid var(--green-m)",borderRadius:20,padding:"3px 10px",fontSize:12,fontWeight:700}}>+{ex.diff}{units} ↑</div>}
-                      {ex.diff<0&&<div style={{background:"var(--orange-l)",color:"var(--orange)",border:"1px solid var(--orange-m)",borderRadius:20,padding:"3px 10px",fontSize:12,fontWeight:700}}>{ex.diff}{units}</div>}
-                      {ex.diff===0&&<div style={{background:"var(--surface)",color:"var(--ink3)",borderRadius:20,padding:"3px 10px",fontSize:12,fontWeight:600}}>Same</div>}
+                      {open&&(
+                        <div className="str-card-body">
+                          <div className="chart-hdr">
+                            <span className="chart-title">Weight progression</span>
+                            <span className="chart-delta">{diff>=0?"+":""}{diff}{units} / {ex.sessions} session{ex.sessions!==1?"s":""}</span>
+                          </div>
+                          <WeightChart points={ex.series}/>
+                          <div className="chart-stats-row">
+                            <div className="chart-stat"><div className="chart-stat-lbl">Started</div><div className="chart-stat-val">{ex.first}{units}</div></div>
+                            <div className="chart-stat"><div className="chart-stat-lbl">Sessions</div><div className="chart-stat-val">{ex.sessions}</div></div>
+                            <div className="chart-stat"><div className="chart-stat-lbl">Current max</div><div className="chart-stat-val" style={{color:"var(--green)"}}>{ex.last}{units}</div></div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div style={{display:"flex",alignItems:"center",gap:12}}>
-                      <div style={{flex:1,textAlign:"center"}}>
-                        <div style={{fontSize:11,fontWeight:600,color:"var(--ink3)",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.8px"}}>First</div>
-                        <div style={{fontSize:28,fontWeight:800,color:"var(--ink3)",letterSpacing:"-0.5px"}}>{ex.first}</div>
-                        <div style={{fontSize:11,color:"var(--ink3)"}}>{units}</div>
-                      </div>
-                      <div style={{fontSize:24,color:"var(--ink3)"}}>→</div>
-                      <div style={{flex:1,textAlign:"center"}}>
-                        <div style={{fontSize:11,fontWeight:600,color:"var(--ch)",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.8px"}}>Latest</div>
-                        <div style={{fontSize:28,fontWeight:800,color:"var(--ch)",letterSpacing:"-0.5px"}}>{ex.last}</div>
-                        <div style={{fontSize:11,color:"var(--ink3)"}}>{units}</div>
-                      </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {progSubTab==="calendar"&&(
+              <div className="u2" style={{background:"var(--white)",border:"1.5px solid var(--border)",borderRadius:16,padding:"16px",boxShadow:"var(--sh)"}}>
+                <CalendarView sessionLog={sessionLog}/>
+              </div>
+            )}
+
+            {progSubTab==="history"&&(
+              <div className="u2">
+                <div className="range-row">
+                  <div className="lbl" style={{marginBottom:0}}>Recent sessions</div>
+                  <div className="range-pills">
+                    {["Week","1M","6M","1Y","All"].map(r=><div key={r} className={`range-pill${progRange===r?" on":""}`} onClick={()=>setProgRange(r)}>{r}</div>)}
+                  </div>
+                </div>
+                {rangeFilteredSessions.length===0?(
+                  <div className="empty-state"><div className="empty-state-icon">📋</div><div className="empty-state-text">No sessions in this range.</div></div>
+                ):rangeFilteredSessions.map(sess=>(
+                  <div className="hist-sess" key={sess.id}>
+                    <div className="hist-sess-hdr" onClick={()=>setExpS(p=>({...p,[sess.id]:!p[sess.id]}))}>
+                      <div><div className="hist-sess-date">{sess.dayName}{sess.partial?<span style={{color:"var(--orange)"}}> · Partial</span>:""}</div><div className="hist-sess-name">{fmtDate(sess.date)} · {sess.exercises.reduce((a,e)=>a+e.sets.length,0)} sets</div></div>
+                      <span className={`hist-sess-chev${expandedSess[sess.id]?" open":""}`}>▼</span>
                     </div>
+                    {expandedSess[sess.id]&&(<div className="hist-sess-body">{sess.exercises.map((ex,ei)=>(<div key={ei}><div className="hist-ex-name">{ex.name}</div>{ex.sets.map((s,si)=><div className="hist-set-row" key={si}><div className="hist-set-n">Set {si+1}</div><div className="hist-set-val">{s.w} {units} × {s.r} reps</div></div>)}</div>))}</div>)}
                   </div>
                 ))}
               </div>
-            );
-          })()}
+            )}
+          </div>
+        );
+      })()}
 
-          {/* Recent sessions */}
-          {sessionLog.length>0&&(
-            <div className="u4">
-              <div className="lbl">Recent sessions</div>
-              {sessionLog.slice(0,5).map(sess=>(
-                <div className="hist-sess" key={sess.id}>
-                  <div className="hist-sess-hdr" onClick={()=>setExpS(p=>({...p,[sess.id]:!p[sess.id]}))}>
-                    <div><div className="hist-sess-date">{fmtDate(sess.date)}</div><div className="hist-sess-name">{sess.dayName} · {sess.exercises.length} exercises{sess.partial?" · Partial":""}</div></div>
-                    <span className={`hist-sess-chev${expandedSess[sess.id]?" open":""}`}>▼</span>
-                  </div>
-                  {expandedSess[sess.id]&&(<div className="hist-sess-body">{sess.exercises.map((ex,ei)=>(<div key={ei}><div className="hist-ex-name">{ex.name}</div>{ex.sets.map((s,si)=><div className="hist-set-row" key={si}><div className="hist-set-n">Set {si+1}</div><div className="hist-set-val">{s.w} {units} × {s.r} reps</div></div>)}</div>))}</div>)}
-                </div>
-              ))}
-            </div>
-          )}
-          {sessionLog.length===0&&<div className="empty-state u3"><div className="empty-state-icon">📋</div><div className="empty-state-text">Your sessions will appear here.</div></div>}
-        </div>
-      )}
 
       {/* PROFILE */}
       {tab==="profile"&&(
@@ -1062,44 +1182,4 @@ export default function App() {
               {editingName?(<input className="puc-name-inp" value={nameInput} onChange={e=>setNameInput(e.target.value)} autoFocus onBlur={async()=>{if(nameInput.trim()){setUserName(nameInput.trim());if(user)await updateProfile({name:nameInput.trim()});}setEditName(false);}} onKeyDown={e=>{if(e.key==="Enter"){if(nameInput.trim())setUserName(nameInput.trim());setEditName(false);}}}/>):(
                 <div className="puc-name-row" onClick={()=>{setNameInput(userName);setEditName(true);}}><div className="puc-name">{userName}</div><div style={{color:"var(--ink3)",display:"flex"}}>{TI.edit}</div></div>
               )}
-              <div className="puc-sub">{user?`Signed in as ${user.email}`:"Guest — data not saved"}</div>
-              <div className="puc-streak-pill">💪 {sessionLog.length} sessions logged</div>
-            </div>
-          </div>
-          {!user&&(
-            <div style={{margin:"0 0 4px",background:"var(--orange-l)",borderTop:"1px solid var(--orange-m)",borderBottom:"1px solid var(--orange-m)",padding:"12px 20px"}}>
-              <div style={{fontSize:13,color:"var(--orange)",fontWeight:700,marginBottom:4}}>You're using guest mode</div>
-              <div style={{fontSize:12,color:"var(--ink3)",marginBottom:8}}>Your data is saved locally. Sign in to back it up to the cloud.</div>
-              <button className="google-btn" style={{fontSize:13,padding:"10px"}} onClick={async()=>await signInWithGoogle()}>{TI.google} Sign in with Google</button>
-            </div>
-          )}
-
-          <div className="profile-section-lbl">Preferences</div>
-          <div className="profile-group">
-            <div className="profile-row"><div className="profile-row-icon">{TI.weight}</div><div className="profile-row-label">Units</div><div className="units-toggle"><div className={`ut-opt${units==="kg"?" on":""}`} onClick={async()=>{setUnits("kg");if(user)await updateProfile({units:"kg"});}}>kg</div><div className={`ut-opt${units==="lbs"?" on":""}`} onClick={async()=>{setUnits("lbs");if(user)await updateProfile({units:"lbs"});}}>lbs</div></div></div>
-            <div className="profile-row"><div className="profile-row-icon">{TI.bell}</div><div className="profile-row-label">Training reminders</div><button className={`notif-toggle${notifEnabled?" on":""}`} onClick={async()=>{setNotif(p=>!p);if(user)await updateProfile({notif_enabled:!notifEnabled});}}><div className="notif-knob"/></button></div>
-          </div>
-          <div className="profile-section-lbl">Support & Legal</div>
-          <div className="profile-group">
-            {[{icon:TI.megaphone,label:"Request a Feature"},{icon:TI.mail,label:"Support Email"},{icon:TI.doc,label:"Terms & Conditions"},{icon:TI.shield,label:"Privacy Policy"}].map((r,i)=><div className="profile-row" key={i}><div className="profile-row-icon">{r.icon}</div><div className="profile-row-label">{r.label}</div><div className="profile-row-chev">{TI.chevron}</div></div>)}
-          </div>
-          <div className="profile-section-lbl">Account Actions</div>
-          <div className="profile-group">
-            {user&&<div className="profile-row" onClick={async()=>{await signOut();setSkipAuth(false);setScreen("splash");setPrograms([]);setSessionLog([]);setWSets({});}}><div className="profile-row-icon">{TI.logout}</div><div className="profile-row-label">Logout</div><div className="profile-row-chev">{TI.chevron}</div></div>}
-            <div className="profile-row"><div className="profile-row-icon">{TI.trash}</div><div className="profile-row-label" style={{color:"#cc3333"}}>Delete Account</div><div className="profile-row-chev">{TI.chevron}</div></div>
-          </div>
-          <div className="profile-version">VERSION 1.0.0</div>
-        </div>
-      )}
-
-      <div className="tab-bar">
-        {[{id:"home",icon:TI.home,label:"Home"},{id:"progress",icon:TI.progress,label:"Progress"},{id:"profile",icon:TI.profile,label:"Profile"}].map(t=>(
-          <button key={t.id} className={`tab-item${tab===t.id?" on":""}`} onClick={()=>setTab(t.id)}>
-            <div className="tab-icon">{t.icon}</div>
-            <div className="tab-label">{t.label}</div>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
+              <div className="puc-sub">{user?`Signed in as ${user.email}`:"Guest — data not 
