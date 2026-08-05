@@ -524,6 +524,7 @@ const getWeekDates=()=>{const d=[];for(let i=0;i<7;i++){const dt=new Date(today)
 const weekDates=getWeekDates();
 const ini=n=>n.trim()?n.trim().split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2):"U";
 const fmtDate=dt=>new Date(dt).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
+const localDateStr=ts=>{const d=new Date(ts);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;};
 const getMonthLabel=dt=>new Date(dt).toLocaleDateString("en-GB",{month:"long",year:"numeric"});
 const CIRC=2*Math.PI*16;
 
@@ -536,7 +537,7 @@ export default function App() {
     profile, programs: dbPrograms, sessionLog: dbSessionLog,
     workoutState: dbWorkoutState, loading: dataLoading,
     saveProgram, deleteProgram, updateProgramExercises,
-    saveSession, saveWorkoutState, updateProfile
+    saveSession, saveWorkoutState, updateProfile, deleteAccount
   } = useData(user);
 
   const [screen, setScreen] = useState(() => {
@@ -588,32 +589,43 @@ export default function App() {
   useEffect(() => { localStorage.setItem('overload_sessionLog', JSON.stringify(sessionLog)); }, [sessionLog]);
   useEffect(() => { localStorage.setItem('overload_wSets', JSON.stringify(wSets)); }, [wSets]);
 
-  // Sync Supabase data to local state when loaded
+  // Sync Supabase data to local state — the backend is the source of truth once migration has settled
   useEffect(() => {
     if (!user || dataLoading) return;
-    if (dbPrograms.length > 0) {
+    const migrated = localStorage.getItem('overload_migrated') === 'true';
+    if (migrated) {
+      // Fully trust the DB, including when it's empty (e.g. after Delete Account or a deletion elsewhere)
       setPrograms(dbPrograms.map(p => ({
         id: p.id, split: { id: p.split_id, name: p.split_name },
         days: p.days, exs: p.exercises
       })));
+      setSessionLog(dbSessionLog);
+      setWSets(dbWorkoutState);
+    } else {
+      // Migration hasn't finished yet — don't let an empty DB snapshot wipe not-yet-synced guest data
+      if (dbPrograms.length > 0) {
+        setPrograms(dbPrograms.map(p => ({
+          id: p.id, split: { id: p.split_id, name: p.split_name },
+          days: p.days, exs: p.exercises
+        })));
+      }
+      if (dbSessionLog.length > 0) setSessionLog(dbSessionLog);
+      if (Object.keys(dbWorkoutState).length > 0) setWSets(dbWorkoutState);
     }
-    if (dbSessionLog.length > 0) setSessionLog(dbSessionLog);
-    if (Object.keys(dbWorkoutState).length > 0) setWSets(dbWorkoutState);
     if (profile) {
       if (profile.name) setUserName(profile.name);
       if (profile.units) setUnits(profile.units);
-
       if (profile.notif_enabled !== undefined) setNotif(profile.notif_enabled);
-      if (dbPrograms.length > 0 && screen === 'splash') setScreen('main');
     }
+    if (dbPrograms.length > 0 && screen === 'splash') setScreen('main');
   }, [user, dataLoading, dbPrograms, dbSessionLog, dbWorkoutState, profile]);
 
   // One-time migration: push guest data (from localStorage) into the new account
   useEffect(() => {
     if (!user || dataLoading) return;
-    if (localStorage.getItem('overload_migrated') === 'true') return;
+    if (localStorage.getItem('overload_migration_started') === 'true') return;
     if (dbPrograms.length === 0 && (programs.length > 0 || sessionLog.length > 0)) {
-      localStorage.setItem('overload_migrated', 'true');
+      localStorage.setItem('overload_migration_started', 'true');
       (async () => {
         for (const prog of programs) await saveProgram(prog);
         for (const sess of [...sessionLog].reverse()) await saveSession(sess);
@@ -621,12 +633,30 @@ export default function App() {
         localStorage.removeItem('overload_programs');
         localStorage.removeItem('overload_sessionLog');
         localStorage.removeItem('overload_wSets');
+        localStorage.setItem('overload_migrated', 'true');
         setScreen('main');
       })();
     } else {
-      localStorage.setItem('overload_migrated', 'true');
+      localStorage.setItem('overload_migration_started', 'true');
+      localStorage.setItem('overload_migrated', 'true'); // nothing to migrate — DB can be trusted immediately
     }
   }, [user, dataLoading]);
+
+  // Rebuild this week's trained-day markers and per-day last-trained timestamps from real session
+  // history on every load/change, instead of only mutating them in memory when a workout finishes.
+  useEffect(() => {
+    const weekMap = {};
+    for (let i = 0; i < 7; i++) {
+      const dt = new Date(today); dt.setDate(today.getDate() - todayMonIdx + i);
+      const key = localDateStr(dt.getTime());
+      const names = [...new Set(sessionLog.filter(s => localDateStr(s.date) === key).map(s => s.dayName))];
+      if (names.length) weekMap[i] = names;
+    }
+    setTrained(weekMap);
+    const lastMap = {};
+    sessionLog.forEach(s => { if (!lastMap[s.dayName] || s.date > lastMap[s.dayName]) lastMap[s.dayName] = s.date; });
+    setLastTs(lastMap);
+  }, [sessionLog]);
 
   const showToast = msg => {
     setToast(msg);
@@ -651,7 +681,10 @@ export default function App() {
   };
 
   const handleDeleteWorkout = async dayName => {
-    setPrograms(p => p.filter(prog => !prog.days.includes(dayName)));
+    setPrograms(p => p.map(prog => prog.days.includes(dayName)
+      ? { ...prog, days: prog.days.filter(d => d !== dayName), exs: Object.fromEntries(Object.entries(prog.exs).filter(([d]) => d !== dayName)) }
+      : prog
+    ).filter(prog => prog.days.length > 0));
     setSessionScreen(null);
     if (user) await deleteProgram(dayName);
     showToast(`${dayName} removed`);
@@ -664,51 +697,68 @@ export default function App() {
   const removeSet = (ex, idx) => setWSets(p => { const s=[...(p[ex]||[])]; if(s.length<=1) return p; s.splice(idx,1); return {...p,[ex]:s}; });
   const updateSet = (ex, i, f, v) => setWSets(p => { const s=[...(p[ex]||[])]; s[i]={...s[i],[f]:v,typed:true}; return {...p,[ex]:s}; });
   const tickSet = (ex, i) => setWSets(p => { const s=[...(p[ex]||[])]; s[i]={...s[i],done:!s[i].done}; const next={...p,[ex]:s}; if(!s[i].done&&s.every(set=>set.done)) setTimeout(()=>setCollapsedDone(prev=>({...prev,[ex]:true})),300); return next; });
-  const removeExFromDay = (day, ex) => setPrograms(p => p.map(prog => prog.exs[day]?{...prog,exs:{...prog.exs,[day]:prog.exs[day].filter(e=>e!==ex)}}:prog));
-  const addExToDay = (day, ex) => {
+  const removeExFromDay = async (day, ex) => {
+    const newList = getDayExs(day).filter(e => e !== ex);
+    setPrograms(p => p.map(prog => prog.exs[day] ? { ...prog, exs: { ...prog.exs, [day]: newList } } : prog));
+    if (user) await updateProgramExercises(day, newList);
+  };
+  const addExToDay = async (day, ex) => {
     if(!ex.trim()) return;
-    setPrograms(p => p.map(prog => prog.exs[day]?{...prog,exs:{...prog.exs,[day]:[...(prog.exs[day]||[]),ex.trim()]}}:prog));
-    if(!wSets[ex.trim()]) setWSets(pw => ({...pw,[ex.trim()]:[{w:"",r:"",done:false,lastW:"—",lastR:"—",typed:false}]}));
+    const trimmed = ex.trim();
+    const newList = [...getDayExs(day), trimmed];
+    setPrograms(p => p.map(prog => prog.exs[day] ? { ...prog, exs: { ...prog.exs, [day]: newList } } : prog));
+    if(!wSets[trimmed]) setWSets(pw => ({...pw,[trimmed]:[{w:"",r:"",done:false,lastW:"—",lastR:"—",typed:false}]}));
     setEditS("");
+    if (user) await updateProgramExercises(day, newList);
   };
   const isPR = (ex, si, w, typed) => { if(!typed||!w) return false; const lw=wSets[ex]?.[si]?.lastW; if(!lw||lw==="—"||lw==="BW") return false; return parseFloat(w)>parseFloat(lw); };
   const isExDone = ex => { const s=wSets[ex]||[]; return s.length>0&&s.every(s=>s.done); };
   const getBestSet = ex => { const sets=(wSets[ex]||[]).filter(s=>s.done&&s.typed&&s.w); if(!sets.length) return null; const b=sets.reduce((a,s)=>parseFloat(s.w)>parseFloat(a.w)?s:a,sets[0]); return `${b.w}${units}×${b.r}`; };
 
   const getSessPct = dayName => {
-    const todayStr2=new Date().toDateString();
-    const completedToday=sessionLog.find(s=>s.dayName===dayName&&new Date(s.date).toDateString()===todayStr2);
+    const todayKey=localDateStr(Date.now());
+    const completedToday=sessionLog.find(s=>s.dayName===dayName&&localDateStr(s.date)===todayKey);
     if(completedToday){ const totalSaved=completedToday.exercises.reduce((a,ex)=>a+ex.sets.length,0); const totalExpected=getDayExs(dayName).reduce((a,ex)=>a+(wSets[ex]?.length||0),0); if(totalExpected===0) return 100; return Math.min(100,Math.round(totalSaved/totalExpected*100)); }
     const exs=getDayExs(dayName); const tot=exs.reduce((a,ex)=>a+(wSets[ex]?.length||0),0); const done=exs.reduce((a,ex)=>a+(wSets[ex]?.filter(s=>s.done).length||0),0); return tot>0?Math.round(done/tot*100):0;
   };
   const getSessSetCounts = dayName => { const exs=getDayExs(dayName); const tot=exs.reduce((a,ex)=>a+(wSets[ex]?.length||0),0); const done=exs.reduce((a,ex)=>a+(wSets[ex]?.filter(s=>s.done).length||0),0); return {tot,done}; };
   const anyDone = dayName => getDayExs(dayName).some(ex=>(wSets[ex]||[]).some(s=>s.done));
 
+  // Finishing a workout: for signed-in users, the DB write happens first and the UI only reflects
+  // success once Supabase confirms it (backend is the source of truth) — on failure we show an
+  // error and leave everything as-is rather than silently marking it done. Guest mode has no
+  // backend to confirm against, so it stays optimistic/local-only.
   const doFinish = async dayName => {
     const exNames=getDayExs(dayName);
     const untouched=exNames.filter(ex=>(wSets[ex]||[]).every(s=>!s.done));
     const isPartial=untouched.length>0;
     const sessExs=exNames.map(ex=>({name:ex,sets:(wSets[ex]||[]).filter(s=>s.typed||s.done).map(s=>({w:s.w||s.lastW,r:s.r||s.lastR}))})).filter(e=>e.sets.length>0);
-    const newSession={id:Date.now(),date:Date.now(),dayName,exercises:sessExs,partial:isPartial};
-    const todayStr2=new Date().toDateString();
-    const existingIdx=sessionLog.findIndex(s=>s.dayName===dayName&&new Date(s.date).toDateString()===todayStr2);
-    if(existingIdx>=0){ setSessionLog(p=>{const u=[...p];u[existingIdx]={...u[existingIdx],exercises:sessExs,partial:isPartial};return u;}); }
-    else { setSessionLog(p=>[newSession,...p]); }
-    // Save to Supabase
-    if (user) await saveSession(newSession);
-    setWSets(p=>{
-      const next={...p};
-      exNames.forEach(ex=>{
-        const updatedSets=isPartial?(p[ex]||[]).map(s=>({...s,lastW:s.typed&&s.w?s.w:s.lastW,lastR:s.typed&&s.r?s.r:s.lastR})):(p[ex]||[]).map(s=>({...s,done:false,lastW:s.typed&&s.w?s.w:s.lastW,lastR:s.typed&&s.r?s.r:s.lastR,w:s.typed&&s.w?s.w:s.lastW!=="—"?s.lastW:"",r:s.typed&&s.r?s.r:s.lastR!=="—"?s.lastR:"",typed:false}));
-        next[ex]=updatedSets;
-        if (user) saveWorkoutState(ex, updatedSets);
-      });
-      return next;
-    });
+    const sessionPayload={dayName,exercises:sessExs,partial:isPartial};
 
-    const viewIdx=viewingDayIdx!==null?viewingDayIdx:todayMonIdx;
-    setTrained(p=>({...p,[viewIdx]:[...new Set([...(p[viewIdx]||[]),dayName])]}));
-    setLastTs(p=>({...p,[dayName]:Date.now()}));
+    if (user) {
+      const {error}=await saveSession(sessionPayload);
+      if (error) { showToast("Couldn't save — check your connection and try again"); return; }
+      // saveSession already updated the hook's own state; the sync effect mirrors it into local state.
+    } else {
+      const todayKey=localDateStr(Date.now());
+      const existingIdx=sessionLog.findIndex(s=>s.dayName===dayName&&localDateStr(s.date)===todayKey);
+      const newSession={id:Date.now(),date:Date.now(),...sessionPayload};
+      if(existingIdx>=0){ setSessionLog(p=>{const u=[...p];u[existingIdx]={...u[existingIdx],exercises:sessExs,partial:isPartial};return u;}); }
+      else { setSessionLog(p=>[newSession,...p]); }
+    }
+
+    const nextWSets={};
+    for (const ex of exNames) {
+      const updatedSets=isPartial?(wSets[ex]||[]).map(s=>({...s,lastW:s.typed&&s.w?s.w:s.lastW,lastR:s.typed&&s.r?s.r:s.lastR})):(wSets[ex]||[]).map(s=>({...s,done:false,lastW:s.typed&&s.w?s.w:s.lastW,lastR:s.typed&&s.r?s.r:s.lastR,w:s.typed&&s.w?s.w:s.lastW!=="—"?s.lastW:"",r:s.typed&&s.r?s.r:s.lastR!=="—"?s.lastR:"",typed:false}));
+      nextWSets[ex]=updatedSets;
+      if (user) {
+        const {error}=await saveWorkoutState(ex, updatedSets);
+        if (error) showToast(`Couldn't save ${ex} — try again`);
+      }
+    }
+    if (!user) setWSets(p=>({...p,...nextWSets}));
+    // Signed-in: saveWorkoutState already updated the hook's state; the sync effect mirrors it locally.
+
     if(!isPartial){ setCollapsedDone({}); setSessionScreen(null); }
     showToast(`${dayName} logged ✓`);
   };
@@ -745,8 +795,8 @@ export default function App() {
   // Weekly volume — sets per day this week
   const weeklyVol = DAYS_MON.map((_,i)=>{
     const dt=new Date(today); dt.setDate(today.getDate()-todayMonIdx+i);
-    const dtStr=dt.toDateString();
-    const daySessions=sessionLog.filter(s=>new Date(s.date).toDateString()===dtStr);
+    const dtStr=localDateStr(dt.getTime());
+    const daySessions=sessionLog.filter(s=>localDateStr(s.date)===dtStr);
     const sets=daySessions.reduce((a,s)=>a+s.exercises.reduce((b,ex)=>b+ex.sets.length,0),0);
     return{day:DAYS_MON[i].slice(0,1),sets,isToday:i===todayMonIdx,isFuture:i>todayMonIdx};
   });
@@ -896,7 +946,7 @@ export default function App() {
               const isToday=i===todayMonIdx;const isViewing=viewingDayIdx===i;
               const done=isDayDone(i);const sessLabel=getDaySessionLabel(i);
               const trainedSess=(trainedDays[i]||[])[0];
-              const todaySessEntry=trainedSess?sessionLog.find(s=>s.dayName===trainedSess&&new Date(s.date).toDateString()===new Date(today.getTime()-(todayMonIdx-i)*86400000).toDateString()):null;
+              const todaySessEntry=trainedSess?sessionLog.find(s=>s.dayName===trainedSess&&localDateStr(s.date)===localDateStr(today.getTime()-(todayMonIdx-i)*86400000)):null;
               const isPartialDay=done&&todaySessEntry?.partial;
               const partialPct=isPartialDay?getSessPct(trainedSess):100;
               const showCard=isToday||isViewing;
@@ -930,7 +980,7 @@ export default function App() {
                 const exNames=getDayExs(dayName);
                 const viewIdx=viewingDayIdx!==null?viewingDayIdx:todayMonIdx;
                 const isDoneToday=(trainedDays[viewIdx]||[]).includes(dayName);
-                const todaySess=isDoneToday?sessionLog.find(s=>s.dayName===dayName&&new Date(s.date).toDateString()===new Date(today.getTime()-(todayMonIdx-viewIdx)*86400000).toDateString()):null;
+                const todaySess=isDoneToday?sessionLog.find(s=>s.dayName===dayName&&localDateStr(s.date)===localDateStr(today.getTime()-(todayMonIdx-viewIdx)*86400000)):null;
                 const isPartialToday=isDoneToday&&todaySess?.partial;
                 const isFullToday=isDoneToday&&!isPartialToday;
                 const pct=isDoneToday?getSessPct(dayName):0;
@@ -1144,82 +1194,4 @@ export default function App() {
               <div className="u2" style={{background:"var(--white)",border:"1.5px solid var(--border)",borderRadius:16,padding:"16px",boxShadow:"var(--sh)"}}>
                 <CalendarView sessionLog={sessionLog}/>
               </div>
-            )}
-
-            {progSubTab==="history"&&(
-              <div className="u2">
-                <div className="range-row">
-                  <div className="lbl" style={{marginBottom:0}}>Recent sessions</div>
-                  <div className="range-pills">
-                    {["Week","1M","6M","1Y","All"].map(r=><div key={r} className={`range-pill${progRange===r?" on":""}`} onClick={()=>setProgRange(r)}>{r}</div>)}
-                  </div>
-                </div>
-                {rangeFilteredSessions.length===0?(
-                  <div className="empty-state"><div className="empty-state-icon">📋</div><div className="empty-state-text">No sessions in this range.</div></div>
-                ):rangeFilteredSessions.map(sess=>(
-                  <div className="hist-sess" key={sess.id}>
-                    <div className="hist-sess-hdr" onClick={()=>setExpS(p=>({...p,[sess.id]:!p[sess.id]}))}>
-                      <div><div className="hist-sess-date">{sess.dayName}{sess.partial?<span style={{color:"var(--orange)"}}> · Partial</span>:""}</div><div className="hist-sess-name">{fmtDate(sess.date)} · {sess.exercises.reduce((a,e)=>a+e.sets.length,0)} sets</div></div>
-                      <span className={`hist-sess-chev${expandedSess[sess.id]?" open":""}`}>▼</span>
-                    </div>
-                    {expandedSess[sess.id]&&(<div className="hist-sess-body">{sess.exercises.map((ex,ei)=>(<div key={ei}><div className="hist-ex-name">{ex.name}</div>{ex.sets.map((s,si)=><div className="hist-set-row" key={si}><div className="hist-set-n">Set {si+1}</div><div className="hist-set-val">{s.w} {units} × {s.r} reps</div></div>)}</div>))}</div>)}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })()}
-
-
-      {/* PROFILE */}
-      {tab==="profile"&&(
-        <div className="profile-scroll">
-          <div className="profile-title">Profile</div>
-          <div className="profile-user-card">
-            <div className="puc-av">{ini(userName)}</div>
-            <div style={{flex:1}}>
-              {editingName?(<input className="puc-name-inp" value={nameInput} onChange={e=>setNameInput(e.target.value)} autoFocus onBlur={async()=>{if(nameInput.trim()){setUserName(nameInput.trim());if(user)await updateProfile({name:nameInput.trim()});}setEditName(false);}} onKeyDown={e=>{if(e.key==="Enter"){if(nameInput.trim())setUserName(nameInput.trim());setEditName(false);}}}/>):(
-                <div className="puc-name-row" onClick={()=>{setNameInput(userName);setEditName(true);}}><div className="puc-name">{userName}</div><div style={{color:"var(--ink3)",display:"flex"}}>{TI.edit}</div></div>
-              )}
-              <div className="puc-sub">{user?`Signed in as ${user.email}`:"Guest — data not saved"}</div>
-              <div className="puc-streak-pill">💪 {sessionLog.length} sessions logged</div>
-            </div>
-          </div>
-          {!user&&(
-            <div style={{margin:"0 0 4px",background:"var(--orange-l)",borderTop:"1px solid var(--orange-m)",borderBottom:"1px solid var(--orange-m)",padding:"12px 20px"}}>
-              <div style={{fontSize:13,color:"var(--orange)",fontWeight:700,marginBottom:4}}>You're using guest mode</div>
-              <div style={{fontSize:12,color:"var(--ink3)",marginBottom:8}}>Your data is saved locally. Sign in to back it up to the cloud.</div>
-              <button className="google-btn" style={{fontSize:13,padding:"10px"}} onClick={async()=>await signInWithGoogle()}>{TI.google} Sign in with Google</button>
-            </div>
-          )}
-
-          <div className="profile-section-lbl">Preferences</div>
-          <div className="profile-group">
-            <div className="profile-row"><div className="profile-row-icon">{TI.weight}</div><div className="profile-row-label">Units</div><div className="units-toggle"><div className={`ut-opt${units==="kg"?" on":""}`} onClick={async()=>{setUnits("kg");if(user)await updateProfile({units:"kg"});}}>kg</div><div className={`ut-opt${units==="lbs"?" on":""}`} onClick={async()=>{setUnits("lbs");if(user)await updateProfile({units:"lbs"});}}>lbs</div></div></div>
-            <div className="profile-row"><div className="profile-row-icon">{TI.bell}</div><div className="profile-row-label">Training reminders</div><button className={`notif-toggle${notifEnabled?" on":""}`} onClick={async()=>{setNotif(p=>!p);if(user)await updateProfile({notif_enabled:!notifEnabled});}}><div className="notif-knob"/></button></div>
-          </div>
-          <div className="profile-section-lbl">Support & Legal</div>
-          <div className="profile-group">
-            {[{icon:TI.megaphone,label:"Request a Feature"},{icon:TI.mail,label:"Support Email"},{icon:TI.doc,label:"Terms & Conditions"},{icon:TI.shield,label:"Privacy Policy"}].map((r,i)=><div className="profile-row" key={i}><div className="profile-row-icon">{r.icon}</div><div className="profile-row-label">{r.label}</div><div className="profile-row-chev">{TI.chevron}</div></div>)}
-          </div>
-          <div className="profile-section-lbl">Account Actions</div>
-          <div className="profile-group">
-            {user&&<div className="profile-row" onClick={async()=>{await signOut();localStorage.removeItem('overload_migrated');setScreen("splash");setPrograms([]);setSessionLog([]);setWSets({});}}><div className="profile-row-icon">{TI.logout}</div><div className="profile-row-label">Logout</div><div className="profile-row-chev">{TI.chevron}</div></div>}
-            <div className="profile-row"><div className="profile-row-icon">{TI.trash}</div><div className="profile-row-label" style={{color:"#cc3333"}}>Delete Account</div><div className="profile-row-chev">{TI.chevron}</div></div>
-          </div>
-          <div className="profile-version">VERSION 1.0.0</div>
-        </div>
-      )}
-
-      <div className="tab-bar">
-        {[{id:"home",icon:TI.home,label:"Home"},{id:"progress",icon:TI.progress,label:"Progress"},{id:"profile",icon:TI.profile,label:"Profile"}].map(t=>(
-          <button key={t.id} className={`tab-item${tab===t.id?" on":""}`} onClick={()=>setTab(t.id)}>
-            <div className="tab-icon">{t.icon}</div>
-            <div className="tab-label">{t.label}</div>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
+            
