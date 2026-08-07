@@ -279,7 +279,7 @@ const S = `
   /* Progress header + hero */
   .prog-hdr-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px}
   .prog-month{font-size:13px;color:var(--ink3);font-weight:600}
-  .prog-hero{background:linear-gradient(135deg,#2D7A3A 0%,#1F5C2A 100%);border-radius:20px;padding:22px 20px;position:relative;overflow:hidden;margin-bottom:14px}
+  .prog-hero{background:var(--ch);border-radius:20px;padding:22px 20px;position:relative;overflow:hidden;margin-bottom:14px}
   .prog-hero-blob{position:absolute;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.06);top:-70px;right:-60px}
   .prog-hero-lbl{font-size:11px;color:rgba(255,255,255,.7);font-weight:700;text-transform:uppercase;letter-spacing:1.4px;margin-bottom:8px;position:relative}
   .prog-hero-title{font-size:28px;font-weight:800;color:white;letter-spacing:-.5px;position:relative;margin-bottom:6px;line-height:1.1}
@@ -300,7 +300,7 @@ const S = `
   /* Category tabs (Push/Pull/Legs) */
   .cat-tabs{display:flex;background:var(--white);border:1.5px solid var(--border);border-radius:14px;box-shadow:var(--sh);margin-bottom:12px;overflow:hidden}
   .cat-tab{flex:1;text-align:center;padding:12px 4px;font-size:14px;font-weight:700;color:var(--ink3);cursor:pointer;border-bottom:2.5px solid transparent}
-  .cat-tab.on{color:var(--green);border-bottom-color:var(--green)}
+  .cat-tab.on{color:var(--ch);border-bottom-color:var(--ch)}
   /* Strength curve card */
   .str-card{background:var(--white);border:1.5px solid var(--border);border-radius:16px;box-shadow:var(--sh);margin-bottom:8px;overflow:hidden}
   .str-card-hdr{padding:14px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;gap:10px}
@@ -816,9 +816,14 @@ export default function App() {
   const [toast, setToast] = useState(null)
   const toastRef = useRef(null)
   const [progSubTab, setProgSubTab] = useState('strength')
-  const [progRange, setProgRange] = useState('All')
+  const [progRangeStrength, setProgRangeStrength] = useState('All')
+  const [progRangeHistory, setProgRangeHistory] = useState('All')
   const [progExCat, setProgExCat] = useState(null)
   const [expandedStr, setExpStr] = useState({})
+  const progScrollRef = useRef(null)
+  useEffect(() => {
+    if (progScrollRef.current) progScrollRef.current.scrollTop = 0
+  }, [progSubTab])
 
   // Persist guest data locally so it survives page reloads / OAuth redirects
   useEffect(() => {
@@ -2757,8 +2762,10 @@ export default function App() {
               }),
             ),
           )
-          const rangeDays = { Week: 7, '1M': 30, '6M': 182, '1Y': 365, All: 100000 }[progRange]
-          const rangeCutoff = Date.now() - rangeDays * 86400000
+          const rangeDaysStrength = { Week: 7, '1M': 30, '6M': 182, '1Y': 365, All: 100000 }[
+            progRangeStrength
+          ]
+          const rangeCutoffStrength = Date.now() - rangeDaysStrength * 86400000
           const allTrackedExs = [
             ...new Set(sessionLog.flatMap((s) => s.exercises.map((e) => e.name))),
           ].filter((name) => !activeCat || exToCat[name] === activeCat)
@@ -2768,7 +2775,7 @@ export default function App() {
                 .filter(
                   (s) =>
                     s.exercises.some((e) => e.name === exName) &&
-                    new Date(s.date).getTime() >= rangeCutoff,
+                    new Date(s.date).getTime() >= rangeCutoffStrength,
                 )
                 .slice()
                 .reverse()
@@ -2788,12 +2795,16 @@ export default function App() {
               return { name: exName, series, first, last, sessions: series.length, pct }
             })
             .filter(Boolean)
+          const rangeDaysHistory = { Week: 7, '1M': 30, '6M': 182, '1Y': 365, All: 100000 }[
+            progRangeHistory
+          ]
+          const rangeCutoffHistory = Date.now() - rangeDaysHistory * 86400000
           const rangeFilteredSessions = sessionLog.filter(
-            (s) => new Date(s.date).getTime() >= rangeCutoff,
+            (s) => new Date(s.date).getTime() >= rangeCutoffHistory,
           )
 
           return (
-            <div className="prog-scroll">
+            <div className="prog-scroll" ref={progScrollRef}>
               <div className="prog-hdr-row u0">
                 <div className="lbl" style={{ marginBottom: 0 }}>
                   Progress
@@ -2863,8 +2874,8 @@ export default function App() {
                       {['Week', '1M', '6M', '1Y', 'All'].map((r) => (
                         <div
                           key={r}
-                          className={`range-pill${progRange === r ? ' on' : ''}`}
-                          onClick={() => setProgRange(r)}
+                          className={`range-pill${progRangeStrength === r ? ' on' : ''}`}
+                          onClick={() => setProgRangeStrength(r)}
                         >
                           {r}
                         </div>
@@ -3021,8 +3032,8 @@ export default function App() {
                       {['Week', '1M', '6M', '1Y', 'All'].map((r) => (
                         <div
                           key={r}
-                          className={`range-pill${progRange === r ? ' on' : ''}`}
-                          onClick={() => setProgRange(r)}
+                          className={`range-pill${progRangeHistory === r ? ' on' : ''}`}
+                          onClick={() => setProgRangeHistory(r)}
                         >
                           {r}
                         </div>
