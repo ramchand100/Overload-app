@@ -984,8 +984,8 @@ export default function App() {
         [ex]: [
           ...sets,
           {
-            w: prev?.lastW !== '—' ? prev.lastW : '',
-            r: prev?.lastR !== '—' ? prev.lastR : '',
+            w: prev && prev.lastW !== '—' ? prev.lastW : '',
+            r: prev && prev.lastR !== '—' ? prev.lastR : '',
             done: false,
             lastW: prev?.lastW || '—',
             lastR: prev?.lastR || '—',
