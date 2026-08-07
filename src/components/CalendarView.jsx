@@ -110,19 +110,35 @@ export const CalendarView = ({ sessionLog }) => {
                 justifyContent: 'center',
                 borderRadius: 8,
                 cursor: c.sessions.length > 0 ? 'pointer' : 'default',
-                background: c.isSel ? 'var(--ch)' : c.isToday ? 'var(--orange-l)' : 'transparent',
+                background: c.isSel
+                  ? 'var(--ch)'
+                  : c.isToday
+                    ? 'var(--surface)'
+                    : c.sessions.length > 0
+                      ? c.hasFull
+                        ? 'var(--green-l)'
+                        : 'var(--orange-l)'
+                      : 'transparent',
               }}
             >
               <span
                 style={{
                   fontSize: 12,
-                  fontWeight: c.isToday ? 800 : 500,
-                  color: c.isSel ? 'white' : c.isToday ? 'var(--orange)' : 'var(--ink2)',
+                  fontWeight: c.isToday ? 800 : c.sessions.length > 0 ? 700 : 500,
+                  color: c.isSel
+                    ? 'white'
+                    : c.isToday
+                      ? 'var(--ch)'
+                      : c.sessions.length > 0
+                        ? c.hasFull
+                          ? 'var(--green)'
+                          : 'var(--orange)'
+                        : 'var(--ink2)',
                 }}
               >
                 {c.d}
               </span>
-              {c.sessions.length > 0 && (
+              {c.isToday && c.sessions.length > 0 && (
                 <div
                   style={{
                     width: 6,

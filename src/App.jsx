@@ -279,7 +279,7 @@ const S = `
   /* Progress header + hero */
   .prog-hdr-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px}
   .prog-month{font-size:13px;color:var(--ink3);font-weight:600}
-  .prog-hero{background:linear-gradient(135deg,#2D7A3A 0%,#1F5C2A 100%);border-radius:20px;padding:22px 20px;position:relative;overflow:hidden;margin-bottom:14px}
+  .prog-hero{background:var(--ch);border-radius:20px;padding:22px 20px;position:relative;overflow:hidden;margin-bottom:14px}
   .prog-hero-blob{position:absolute;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.06);top:-70px;right:-60px}
   .prog-hero-lbl{font-size:11px;color:rgba(255,255,255,.7);font-weight:700;text-transform:uppercase;letter-spacing:1.4px;margin-bottom:8px;position:relative}
   .prog-hero-title{font-size:28px;font-weight:800;color:white;letter-spacing:-.5px;position:relative;margin-bottom:6px;line-height:1.1}
@@ -300,7 +300,7 @@ const S = `
   /* Category tabs (Push/Pull/Legs) */
   .cat-tabs{display:flex;background:var(--white);border:1.5px solid var(--border);border-radius:14px;box-shadow:var(--sh);margin-bottom:12px;overflow:hidden}
   .cat-tab{flex:1;text-align:center;padding:12px 4px;font-size:14px;font-weight:700;color:var(--ink3);cursor:pointer;border-bottom:2.5px solid transparent}
-  .cat-tab.on{color:var(--green);border-bottom-color:var(--green)}
+  .cat-tab.on{color:var(--ch);border-bottom-color:var(--ch)}
   /* Strength curve card */
   .str-card{background:var(--white);border:1.5px solid var(--border);border-radius:16px;box-shadow:var(--sh);margin-bottom:8px;overflow:hidden}
   .str-card-hdr{padding:14px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;gap:10px}
@@ -347,7 +347,6 @@ const S = `
   /* PROFILE */
   .profile-scroll{flex:1;overflow-y:auto;padding:0 0 44px;display:flex;flex-direction:column}
   .profile-scroll::-webkit-scrollbar{display:none}
-  .profile-title{font-size:28px;font-weight:800;letter-spacing:-.5px;color:var(--ch);padding:16px 20px 12px}
   .profile-section-lbl{font-size:13px;font-weight:600;color:var(--ink3);padding:14px 20px 6px}
   .profile-group{background:var(--white);border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:4px}
   .profile-row{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s}
@@ -357,12 +356,11 @@ const S = `
   .profile-row-value{font-size:14px;font-weight:600;color:var(--ink3);margin-right:4px}
   .profile-row-chev{color:var(--ink3);display:flex;align-items:center}
   .profile-user-card{display:flex;align-items:center;gap:14px;background:var(--white);padding:16px 20px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:4px}
-  .puc-av{width:52px;height:52px;border-radius:50%;background:var(--ch);color:white;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .puc-av{width:52px;height:52px;border-radius:50%;background:var(--ch);color:white;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
   .puc-name-row{display:flex;align-items:center;gap:6px;cursor:pointer}
   .puc-name{font-size:17px;font-weight:700;color:var(--ch)}
   .puc-name-inp{font-size:17px;font-weight:700;color:var(--ch);border:none;border-bottom:2px solid var(--orange);background:transparent;outline:none;font-family:'Inter',sans-serif;width:160px}
   .puc-sub{font-size:13px;color:var(--ink3);margin-top:2px}
-  .puc-streak-pill{display:inline-flex;align-items:center;gap:4px;background:var(--surface);border-radius:20px;padding:3px 9px;font-size:12px;font-weight:700;color:var(--ch);margin-top:6px}
   .profile-version{text-align:center;padding:20px;font-size:12px;color:var(--ink3)}
   .units-toggle{display:flex;background:var(--surface);border-radius:100px;padding:3px;gap:2px}
   .ut-opt{padding:5px 12px;border-radius:100px;font-size:12px;font-weight:600;cursor:pointer;color:var(--ink3);font-family:'Inter',sans-serif}
@@ -678,6 +676,7 @@ const MONTH_NAMES = [
   'November',
   'December',
 ]
+const AVATAR_OPTS = ['💪', '🔥', '🏋️', '⚡', '🦁', '🐺', '🎯', '🚀']
 const OB_PROGRESS = {
   ob_info: 8,
   ob_sex: 18,
@@ -810,14 +809,21 @@ export default function App() {
   const [userName, setUserName] = useState('Athlete')
   const [editingName, setEditName] = useState(false)
   const [nameInput, setNameInput] = useState('')
+  const [userAvatar, setUserAvatar] = useState(null)
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false)
   const [units, setUnits] = useState('kg')
   const [notifEnabled, setNotif] = useState(false)
   const [toast, setToast] = useState(null)
   const toastRef = useRef(null)
   const [progSubTab, setProgSubTab] = useState('strength')
-  const [progRange, setProgRange] = useState('All')
+  const [progRangeStrength, setProgRangeStrength] = useState('All')
+  const [progRangeHistory, setProgRangeHistory] = useState('All')
   const [progExCat, setProgExCat] = useState(null)
   const [expandedStr, setExpStr] = useState({})
+  const progScrollRef = useRef(null)
+  useEffect(() => {
+    if (progScrollRef.current) progScrollRef.current.scrollTop = 0
+  }, [progSubTab])
 
   // Persist guest data locally so it survives page reloads / OAuth redirects
   useEffect(() => {
@@ -868,6 +874,7 @@ export default function App() {
       if (profile.name) setUserName(profile.name)
       if (profile.units) setUnits(profile.units)
       if (profile.notif_enabled !== undefined) setNotif(profile.notif_enabled)
+      if (profile.avatar) setUserAvatar(profile.avatar)
     }
     if (dbPrograms.length > 0 && screen === 'splash') setScreen('main')
   }, [user, dataLoading, dbPrograms, dbSessionLog, dbWorkoutState, profile])
@@ -936,7 +943,8 @@ export default function App() {
       return
     }
     const prog = { id: Date.now(), split: obSplit, days: obSplit.days, exs: obExs }
-    setPrograms((p) => [...p, prog])
+    const nextPrograms = [...programs, prog]
+    setPrograms(nextPrograms)
     const ws = { ...wSets }
     obSplit.days.forEach((d) => {
       ;(obExs[d] || []).forEach((ex) => {
@@ -944,6 +952,12 @@ export default function App() {
       })
     })
     setWSets(ws)
+    // Write guest data to localStorage synchronously here too — don't rely solely on the
+    // persistence useEffect below, which runs after paint and isn't guaranteed to fire
+    // before an OAuth redirect navigates away (see the ob_auth Google button, which calls
+    // addProgram() then signInWithGoogle()).
+    localStorage.setItem('overload_programs', JSON.stringify(nextPrograms))
+    localStorage.setItem('overload_wSets', JSON.stringify(ws))
     if (user) await saveProgram(prog)
     setScreen('main')
   }
@@ -984,8 +998,8 @@ export default function App() {
         [ex]: [
           ...sets,
           {
-            w: prev?.lastW !== '—' ? prev.lastW : '',
-            r: prev?.lastR !== '—' ? prev.lastR : '',
+            w: prev && prev.lastW !== '—' ? prev.lastW : '',
+            r: prev && prev.lastR !== '—' ? prev.lastR : '',
             done: false,
             lastW: prev?.lastW || '—',
             lastR: prev?.lastR || '—',
@@ -2018,6 +2032,7 @@ export default function App() {
             <button
               className="google-btn"
               onClick={async () => {
+                await addProgram()
                 await signInWithGoogle()
               }}
             >
@@ -2747,8 +2762,10 @@ export default function App() {
               }),
             ),
           )
-          const rangeDays = { Week: 7, '1M': 30, '6M': 182, '1Y': 365, All: 100000 }[progRange]
-          const rangeCutoff = Date.now() - rangeDays * 86400000
+          const rangeDaysStrength = { Week: 7, '1M': 30, '6M': 182, '1Y': 365, All: 100000 }[
+            progRangeStrength
+          ]
+          const rangeCutoffStrength = Date.now() - rangeDaysStrength * 86400000
           const allTrackedExs = [
             ...new Set(sessionLog.flatMap((s) => s.exercises.map((e) => e.name))),
           ].filter((name) => !activeCat || exToCat[name] === activeCat)
@@ -2758,7 +2775,7 @@ export default function App() {
                 .filter(
                   (s) =>
                     s.exercises.some((e) => e.name === exName) &&
-                    new Date(s.date).getTime() >= rangeCutoff,
+                    new Date(s.date).getTime() >= rangeCutoffStrength,
                 )
                 .slice()
                 .reverse()
@@ -2778,12 +2795,16 @@ export default function App() {
               return { name: exName, series, first, last, sessions: series.length, pct }
             })
             .filter(Boolean)
+          const rangeDaysHistory = { Week: 7, '1M': 30, '6M': 182, '1Y': 365, All: 100000 }[
+            progRangeHistory
+          ]
+          const rangeCutoffHistory = Date.now() - rangeDaysHistory * 86400000
           const rangeFilteredSessions = sessionLog.filter(
-            (s) => new Date(s.date).getTime() >= rangeCutoff,
+            (s) => new Date(s.date).getTime() >= rangeCutoffHistory,
           )
 
           return (
-            <div className="prog-scroll">
+            <div className="prog-scroll" ref={progScrollRef}>
               <div className="prog-hdr-row u0">
                 <div className="lbl" style={{ marginBottom: 0 }}>
                   Progress
@@ -2853,8 +2874,8 @@ export default function App() {
                       {['Week', '1M', '6M', '1Y', 'All'].map((r) => (
                         <div
                           key={r}
-                          className={`range-pill${progRange === r ? ' on' : ''}`}
-                          onClick={() => setProgRange(r)}
+                          className={`range-pill${progRangeStrength === r ? ' on' : ''}`}
+                          onClick={() => setProgRangeStrength(r)}
                         >
                           {r}
                         </div>
@@ -3011,8 +3032,8 @@ export default function App() {
                       {['Week', '1M', '6M', '1Y', 'All'].map((r) => (
                         <div
                           key={r}
-                          className={`range-pill${progRange === r ? ' on' : ''}`}
-                          onClick={() => setProgRange(r)}
+                          className={`range-pill${progRangeHistory === r ? ' on' : ''}`}
+                          onClick={() => setProgRangeHistory(r)}
                         >
                           {r}
                         </div>
@@ -3032,13 +3053,11 @@ export default function App() {
                           onClick={() => setExpS((p) => ({ ...p, [sess.id]: !p[sess.id] }))}
                         >
                           <div>
-                            <div className="hist-sess-date">
+                            <div
+                              className="hist-sess-date"
+                              style={{ color: sess.partial ? 'var(--orange)' : 'var(--green)' }}
+                            >
                               {sess.dayName}
-                              {sess.partial ? (
-                                <span style={{ color: 'var(--orange)' }}> · Partial</span>
-                              ) : (
-                                ''
-                              )}
                             </div>
                             <div className="hist-sess-name">
                               {fmtDate(sess.date)} ·{' '}
@@ -3078,9 +3097,10 @@ export default function App() {
       {/* PROFILE */}
       {tab === 'profile' && (
         <div className="profile-scroll">
-          <div className="profile-title">Profile</div>
           <div className="profile-user-card">
-            <div className="puc-av">{ini(userName)}</div>
+            <div className="puc-av" onClick={() => setShowAvatarPicker((v) => !v)}>
+              {userAvatar || ini(userName)}
+            </div>
             <div style={{ flex: 1 }}>
               {editingName ? (
                 <input
@@ -3117,9 +3137,45 @@ export default function App() {
               <div className="puc-sub">
                 {user ? `Signed in as ${user.email}` : 'Guest — data not saved'}
               </div>
-              <div className="puc-streak-pill">💪 {sessionLog.length} sessions logged</div>
             </div>
           </div>
+          {showAvatarPicker && (
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 8,
+                padding: '0 20px 16px',
+                background: 'var(--white)',
+                borderBottom: '1px solid var(--border)',
+              }}
+            >
+              {AVATAR_OPTS.map((a) => (
+                <div
+                  key={a}
+                  onClick={async () => {
+                    setUserAvatar(a)
+                    setShowAvatarPicker(false)
+                    if (user) await updateProfile({ avatar: a })
+                  }}
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: '50%',
+                    background: 'var(--surface)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 20,
+                    cursor: 'pointer',
+                    border: a === userAvatar ? '2px solid var(--ch)' : '2px solid transparent',
+                  }}
+                >
+                  {a}
+                </div>
+              ))}
+            </div>
+          )}
           {!user && (
             <div
               style={{
