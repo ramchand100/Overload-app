@@ -1,139 +1,15 @@
-import { useState, useEffect, useRef } from "react";
-import { useAuth } from "./useAuth";
-import { useData } from "./useData";
-
-/* ── Icons ── */
-const TI = {
-  home:(<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>),
-  progress:(<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="12" width="4" height="9" rx="1"/><rect x="10" y="7" width="4" height="14" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg>),
-  profile:(<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="7" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>),
-  trophy:(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2h12v9a6 6 0 01-12 0V2z"/><path d="M6 7H2a2 2 0 000 4h4"/><path d="M18 7h4a2 2 0 010 4h-4"/><path d="M12 17v4"/><path d="M8 21h8"/></svg>),
-  logout:(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>),
-  mail:(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>),
-  doc:(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>),
-  shield:(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>),
-  trash:(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="3,6 5,6 21,6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>),
-  megaphone:(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>),
-  chevron:(<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9,18 15,12 9,6"/></svg>),
-  edit:(<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>),
-  plus:(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>),
-  bell:(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>),
-  weight:(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>),
-  google:(<svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>),
-};
-
-/* ── Mini line graph ── */
-const MiniGraph = ({ data }) => {
-  if(!data||data.length<2) return <div style={{height:60,display:"flex",alignItems:"center",justifyContent:"center",color:"var(--ink3)",fontSize:12}}>Log more sessions to see your curve</div>;
-  const W=280,H=60,pad=8;
-  const vals=data.map(d=>d.kg);
-  const min=Math.min(...vals),max=Math.max(...vals),range=max-min||1;
-  const pts=vals.map((v,i)=>[pad+(i/(vals.length-1))*(W-pad*2),H-pad-((v-min)/range)*(H-pad*2)]);
-  let d=`M ${pts[0]}`;
-  for(let i=1;i<pts.length;i++){const[x1,y1]=pts[i-1],[x2,y2]=pts[i];d+=` Q ${(x1+x2)/2},${y1} ${x2},${y2}`;}
-  return(
-    <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
-      <defs><linearGradient id="grd" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#2C2C2C" stopOpacity="0.08"/><stop offset="100%" stopColor="#2C2C2C" stopOpacity="0"/></linearGradient></defs>
-      <path d={d+` L ${pts[pts.length-1][0]},${H} L ${pad},${H} Z`} fill="url(#grd)"/>
-      <path d={d} fill="none" stroke="#2C2C2C" strokeWidth="2" strokeLinecap="round"/>
-      {pts.map(([x,y],i)=>(<g key={i}><circle cx={x} cy={y} r="3.5" fill="#2C2C2C"/><text x={x} y={y-8} textAnchor="middle" fontSize="9" fill="#666" fontFamily="Inter,sans-serif" fontWeight="700">{vals[i]}</text></g>))}
-    </svg>
-  );
-};
-
-/* Weight progression chart — used inside expanded Strength curve cards */
-const WeightChart = ({ points }) => {
-  if(!points||points.length<2) return <div style={{height:90,display:"flex",alignItems:"center",justifyContent:"center",color:"var(--ink3)",fontSize:12}}>Log 2+ sessions to see this chart</div>;
-  const W=280,H=110,padL=26,padR=10,padT=18,padB=20;
-  const vals=points.map(p=>p.weight);
-  const min=Math.min(...vals),max=Math.max(...vals);
-  const range=(max-min)||1;
-  const innerW=W-padL-padR, innerH=H-padT-padB;
-  const xy=points.map((p,i)=>[padL+(i/(points.length-1))*innerW, padT+innerH-((p.weight-min)/range)*innerH]);
-  let d=`M ${xy[0]}`;
-  for(let i=1;i<xy.length;i++) d+=` L ${xy[i]}`;
-  const gridVals=[min,(min+max)/2,max];
-  return(
-    <svg width="100%" height={H+16} viewBox={`0 0 ${W} ${H+16}`} preserveAspectRatio="none">
-      {gridVals.map((gv,i)=>{
-        const y=padT+innerH-((gv-min)/range)*innerH;
-        return(<g key={i}>
-          <line x1={padL} y1={y} x2={W-padR} y2={y} stroke="var(--border)" strokeWidth="1" strokeDasharray="3,3"/>
-          <text x={0} y={y+3} fontSize="9" fill="var(--ink3)" fontFamily="Inter,sans-serif">{Math.round(gv)}</text>
-        </g>);
-      })}
-      <path d={d} fill="none" stroke="var(--green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-      {xy.map(([x,y],i)=>(<circle key={i} cx={x} cy={y} r="3.5" fill="var(--white)" stroke="var(--green)" strokeWidth="2"/>))}
-      <text x={xy[xy.length-1][0]} y={xy[xy.length-1][1]-8} textAnchor="end" fontSize="10" fill="var(--green)" fontWeight="700" fontFamily="Inter,sans-serif">{vals[vals.length-1]}kg</text>
-      {points.map((p,i)=>(<text key={i} x={xy[i][0]} y={H+12} textAnchor="middle" fontSize="8.5" fill="var(--ink3)" fontFamily="Inter,sans-serif">{new Date(p.date).toLocaleDateString("en-GB",{weekday:"short",day:"numeric"})}</text>))}
-    </svg>
-  );
-};
-
-
-const CalendarView = ({ sessionLog }) => {
-  const [offset, setOffset] = useState(0);
-  const [selDate, setSelDate] = useState(null);
-  const ref = new Date(); ref.setMonth(ref.getMonth() + offset);
-  const yr = ref.getFullYear(), mo = ref.getMonth();
-  const firstDay = new Date(yr, mo, 1);
-  const lastDay = new Date(yr, mo+1, 0);
-  const startDow = (firstDay.getDay()+6)%7;
-  const sessMap = {};
-  sessionLog.forEach(s=>{
-    const d=new Date(s.date);
-    if(d.getFullYear()===yr&&d.getMonth()===mo){const k=d.getDate();if(!sessMap[k])sessMap[k]=[];sessMap[k].push(s);}
-  });
-  const cells=[];
-  for(let i=0;i<startDow;i++)cells.push(null);
-  for(let d=1;d<=lastDay.getDate();d++)cells.push(d);
-  const monthLabel=ref.toLocaleDateString("en-GB",{month:"long",year:"numeric"});
-  const selSessions=selDate?sessMap[selDate]||[]:[];
-  const cellsData=cells.map((d,i)=>{
-    if(!d)return{d:null,i};
-    const sessions=sessMap[d]||[];
-    const hasFull=sessions.some(s=>!s.partial);
-    const isToday=new Date().getDate()===d&&new Date().getMonth()===mo&&new Date().getFullYear()===yr;
-    const isSel=selDate===d;
-    return{d,i,sessions,hasFull,isToday,isSel};
-  });
-  return(
-    <div>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-        <button onClick={()=>setOffset(o=>o-1)} style={{background:"var(--surface)",border:"none",width:30,height:30,borderRadius:"50%",cursor:"pointer",fontSize:14,color:"var(--ch)"}}>‹</button>
-        <div style={{fontSize:14,fontWeight:700,color:"var(--ch)"}}>{monthLabel}</div>
-        <button onClick={()=>setOffset(o=>Math.min(o+1,0))} style={{background:"var(--surface)",border:"none",width:30,height:30,borderRadius:"50%",cursor:"pointer",fontSize:14,color:"var(--ch)",opacity:offset===0?.3:1}}>›</button>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginBottom:4}}>
-        {["M","T","W","T","F","S","S"].map((d,i)=><div key={i} style={{textAlign:"center",fontSize:10,fontWeight:600,color:"var(--ink3)",padding:"2px 0"}}>{d}</div>)}
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2}}>
-        {cellsData.map(c=>!c.d?<div key={c.i}/>:(
-          <div key={c.i} onClick={()=>setSelDate(c.isSel?null:c.d)}
-            style={{aspectRatio:"1",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",borderRadius:8,cursor:c.sessions.length>0?"pointer":"default",background:c.isSel?"var(--ch)":c.isToday?"var(--orange-l)":"transparent"}}>
-            <span style={{fontSize:12,fontWeight:c.isToday?800:500,color:c.isSel?"white":c.isToday?"var(--orange)":"var(--ink2)"}}>{c.d}</span>
-            {c.sessions.length>0&&<div style={{width:6,height:6,borderRadius:"50%",background:c.isSel?"white":c.hasFull?"var(--green)":"var(--orange)",marginTop:1}}/>}
-          </div>
-        ))}
-      </div>
-      {selDate&&selSessions.length>0&&(
-        <div style={{marginTop:12,background:"var(--surface)",borderRadius:12,padding:12}}>
-          {selSessions.map(s=>(
-            <div key={s.id} style={{marginBottom:6}}>
-              <div style={{fontWeight:700,fontSize:13,color:"var(--ch)"}}>{s.dayName}{s.partial?<span style={{color:"var(--orange)",fontSize:11}}> · Partial</span>:""}</div>
-              <div style={{fontSize:12,color:"var(--ink3)",marginTop:2}}>{s.exercises.map(e=>e.name).join(" · ")}</div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
+import { useState, useEffect, useRef } from 'react'
+import { useAuth } from './useAuth'
+import { useData } from './useData'
+import { TI } from './icons'
+import { MiniGraph } from './components/MiniGraph'
+import { WeightChart } from './components/WeightChart'
+import { CalendarView } from './components/CalendarView'
 
 /* ── Contextual line ── */
 const CtxLine = ({ text, orange }) => (
-  <div className={orange?"ctx-orange u1":"ctx-line u1"}>{text}</div>
-);
+  <div className={orange ? 'ctx-orange u1' : 'ctx-line u1'}>{text}</div>
+)
 
 /* ── CSS ── */
 const S = `
@@ -494,617 +370,1954 @@ const S = `
   .badge-ico.locked{opacity:.4;filter:grayscale(1)}.badge-ico.unlocked{background:var(--green-l)}
   .badge-name{font-size:14px;font-weight:700;color:var(--ch)}.badge-desc{font-size:12px;color:var(--ink3);margin-top:2px}
   .badge-date{font-size:11px;color:var(--orange);font-weight:600;margin-top:2px}.badge-hint{font-size:11px;color:var(--ink3);margin-top:2px}
-`;
+`
 
 /* ── DATA ── */
 const EX_LIB = {
-  "Push":["Bench Press","Incline DB Press","OHP","Decline Bench Press","Cable Fly","Pec Deck","Lateral Raise","Front Raise","Tricep Pushdown","Skull Crushers","Overhead Tricep Extension","Dips","Close Grip Bench","Machine Chest Press"],
-  "Pull":["Pull-ups","Chin-ups","Barbell Row","Cable Row","Seated Row","Lat Pulldown","Single Arm DB Row","Face Pulls","Bicep Curl","Hammer Curl","Incline DB Curl","Preacher Curl","Cable Curl","Reverse Curl","Shrugs"],
-  "Legs":["Squat","Front Squat","Romanian Deadlift","Deadlift","Leg Press","Hack Squat","Leg Curl","Leg Extension","Calf Raise","Seated Calf Raise","Hip Thrust","Bulgarian Split Squat","Lunges","Glute Kickback"],
-  "Upper":["Bench Press","Incline DB Press","OHP","Pull-ups","Cable Row","Lat Pulldown","Lateral Raise","Face Pulls","Bicep Curl","Tricep Pushdown","Close Grip Bench","Seated Row","Hammer Curl","Rear Delt Fly"],
-  "Lower":["Squat","Romanian Deadlift","Deadlift","Leg Press","Leg Curl","Leg Extension","Calf Raise","Hip Thrust","Bulgarian Split Squat","Lunges","Hack Squat","Glute Kickback","Seated Calf Raise","Nordic Curl"],
-  "Full Body":["Squat","Bench Press","Deadlift","Pull-ups","OHP","Barbell Row","Bicep Curl","Tricep Pushdown","Leg Press","Lateral Raise","Face Pulls","Calf Raise"],
-  "Chest":["Flat Bench Press","Incline DB Press","Decline Bench Press","Cable Fly","Pec Deck","Machine Chest Press","Dips","Push-ups"],
-  "Back":["Deadlift","Pull-ups","Chin-ups","Barbell Row","Cable Row","Seated Row","Lat Pulldown","Single Arm DB Row","Face Pulls","Shrugs"],
-  "Shoulders":["OHP","DB Shoulder Press","Lateral Raise","Front Raise","Rear Delt Fly","Arnold Press","Cable Lateral Raise","Face Pulls"],
-  "Arms":["Barbell Curl","DB Curl","Hammer Curl","Preacher Curl","Cable Curl","Tricep Pushdown","Skull Crushers","Overhead Tricep Extension","Close Grip Bench","Dips","Tricep Kickback"],
-  "Chest & Back":["Bench Press","Pull-ups","Incline DB Press","Barbell Row","Cable Fly","Lat Pulldown","Pec Deck","Cable Row"],
-  "Shoulders & Arms":["OHP","Barbell Curl","Lateral Raise","Tricep Pushdown","Rear Delt Fly","Hammer Curl","Arnold Press","Skull Crushers"],
-};
-const getExLib=d=>EX_LIB[d]||EX_LIB["Push"];
-const MUSCLE_TAGS={"Bench Press":"Chest","Incline DB Press":"Chest","Decline Bench Press":"Chest","Flat Bench Press":"Chest","Cable Fly":"Chest","Pec Deck":"Chest","Machine Chest Press":"Chest","Dips":"Chest/Tri","Push-ups":"Chest","OHP":"Shoulders","DB Shoulder Press":"Shoulders","Lateral Raise":"Shoulders","Front Raise":"Shoulders","Rear Delt Fly":"Rear Delts","Arnold Press":"Shoulders","Cable Lateral Raise":"Shoulders","Pull-ups":"Back/Bi","Chin-ups":"Back/Bi","Barbell Row":"Back","Cable Row":"Back","Seated Row":"Back","Lat Pulldown":"Back","Single Arm DB Row":"Back","Face Pulls":"Rear Delts","Shrugs":"Traps","Bicep Curl":"Biceps","DB Curl":"Biceps","Hammer Curl":"Biceps","Incline DB Curl":"Biceps","Preacher Curl":"Biceps","Cable Curl":"Biceps","Reverse Curl":"Biceps","Tricep Pushdown":"Triceps","Skull Crushers":"Triceps","Overhead Tricep Extension":"Triceps","Close Grip Bench":"Triceps","Tricep Kickback":"Triceps","Squat":"Quads","Front Squat":"Quads","Romanian Deadlift":"Hamstrings","Deadlift":"Back/Legs","Leg Press":"Quads","Hack Squat":"Quads","Leg Curl":"Hamstrings","Leg Extension":"Quads","Calf Raise":"Calves","Seated Calf Raise":"Calves","Hip Thrust":"Glutes","Bulgarian Split Squat":"Quads/Glutes","Lunges":"Quads/Glutes","Glute Kickback":"Glutes","Nordic Curl":"Hamstrings"};
-const ALL_SPLITS=[{id:"ppl",emoji:"💪",name:"Push / Pull / Legs",desc:"Most popular. Best for 5–6 days.",days:["Push","Pull","Legs"]},{id:"ul",emoji:"🔄",name:"Upper / Lower",desc:"Great balance. Best for 4 days.",days:["Upper","Lower"]},{id:"fb",emoji:"⚡",name:"Full Body",desc:"Train everything each session.",days:["Full Body"]},{id:"bro",emoji:"🏆",name:"Bro Split",desc:"One muscle group per day.",days:["Chest","Back","Shoulders","Arms","Legs"]},{id:"arnold",emoji:"🦁",name:"Arnold Split",desc:"Chest+Back, Shoulders+Arms, Legs.",days:["Chest & Back","Shoulders & Arms","Legs"]}];
-const FREQ_OPTS=[{id:"1-3",label:"1 – 3 days",sub:"Just getting started or busy schedule",dots:2},{id:"4-5",label:"4 – 5 days",sub:"Consistent trainer, solid commitment",dots:4},{id:"6-7",label:"6 – 7 days",sub:"Dedicated, advanced lifter",dots:6}];
+  Push: [
+    'Bench Press',
+    'Incline DB Press',
+    'OHP',
+    'Decline Bench Press',
+    'Cable Fly',
+    'Pec Deck',
+    'Lateral Raise',
+    'Front Raise',
+    'Tricep Pushdown',
+    'Skull Crushers',
+    'Overhead Tricep Extension',
+    'Dips',
+    'Close Grip Bench',
+    'Machine Chest Press',
+  ],
+  Pull: [
+    'Pull-ups',
+    'Chin-ups',
+    'Barbell Row',
+    'Cable Row',
+    'Seated Row',
+    'Lat Pulldown',
+    'Single Arm DB Row',
+    'Face Pulls',
+    'Bicep Curl',
+    'Hammer Curl',
+    'Incline DB Curl',
+    'Preacher Curl',
+    'Cable Curl',
+    'Reverse Curl',
+    'Shrugs',
+  ],
+  Legs: [
+    'Squat',
+    'Front Squat',
+    'Romanian Deadlift',
+    'Deadlift',
+    'Leg Press',
+    'Hack Squat',
+    'Leg Curl',
+    'Leg Extension',
+    'Calf Raise',
+    'Seated Calf Raise',
+    'Hip Thrust',
+    'Bulgarian Split Squat',
+    'Lunges',
+    'Glute Kickback',
+  ],
+  Upper: [
+    'Bench Press',
+    'Incline DB Press',
+    'OHP',
+    'Pull-ups',
+    'Cable Row',
+    'Lat Pulldown',
+    'Lateral Raise',
+    'Face Pulls',
+    'Bicep Curl',
+    'Tricep Pushdown',
+    'Close Grip Bench',
+    'Seated Row',
+    'Hammer Curl',
+    'Rear Delt Fly',
+  ],
+  Lower: [
+    'Squat',
+    'Romanian Deadlift',
+    'Deadlift',
+    'Leg Press',
+    'Leg Curl',
+    'Leg Extension',
+    'Calf Raise',
+    'Hip Thrust',
+    'Bulgarian Split Squat',
+    'Lunges',
+    'Hack Squat',
+    'Glute Kickback',
+    'Seated Calf Raise',
+    'Nordic Curl',
+  ],
+  'Full Body': [
+    'Squat',
+    'Bench Press',
+    'Deadlift',
+    'Pull-ups',
+    'OHP',
+    'Barbell Row',
+    'Bicep Curl',
+    'Tricep Pushdown',
+    'Leg Press',
+    'Lateral Raise',
+    'Face Pulls',
+    'Calf Raise',
+  ],
+  Chest: [
+    'Flat Bench Press',
+    'Incline DB Press',
+    'Decline Bench Press',
+    'Cable Fly',
+    'Pec Deck',
+    'Machine Chest Press',
+    'Dips',
+    'Push-ups',
+  ],
+  Back: [
+    'Deadlift',
+    'Pull-ups',
+    'Chin-ups',
+    'Barbell Row',
+    'Cable Row',
+    'Seated Row',
+    'Lat Pulldown',
+    'Single Arm DB Row',
+    'Face Pulls',
+    'Shrugs',
+  ],
+  Shoulders: [
+    'OHP',
+    'DB Shoulder Press',
+    'Lateral Raise',
+    'Front Raise',
+    'Rear Delt Fly',
+    'Arnold Press',
+    'Cable Lateral Raise',
+    'Face Pulls',
+  ],
+  Arms: [
+    'Barbell Curl',
+    'DB Curl',
+    'Hammer Curl',
+    'Preacher Curl',
+    'Cable Curl',
+    'Tricep Pushdown',
+    'Skull Crushers',
+    'Overhead Tricep Extension',
+    'Close Grip Bench',
+    'Dips',
+    'Tricep Kickback',
+  ],
+  'Chest & Back': [
+    'Bench Press',
+    'Pull-ups',
+    'Incline DB Press',
+    'Barbell Row',
+    'Cable Fly',
+    'Lat Pulldown',
+    'Pec Deck',
+    'Cable Row',
+  ],
+  'Shoulders & Arms': [
+    'OHP',
+    'Barbell Curl',
+    'Lateral Raise',
+    'Tricep Pushdown',
+    'Rear Delt Fly',
+    'Hammer Curl',
+    'Arnold Press',
+    'Skull Crushers',
+  ],
+}
+const getExLib = (d) => EX_LIB[d] || EX_LIB['Push']
+const MUSCLE_TAGS = {
+  'Bench Press': 'Chest',
+  'Incline DB Press': 'Chest',
+  'Decline Bench Press': 'Chest',
+  'Flat Bench Press': 'Chest',
+  'Cable Fly': 'Chest',
+  'Pec Deck': 'Chest',
+  'Machine Chest Press': 'Chest',
+  Dips: 'Chest/Tri',
+  'Push-ups': 'Chest',
+  OHP: 'Shoulders',
+  'DB Shoulder Press': 'Shoulders',
+  'Lateral Raise': 'Shoulders',
+  'Front Raise': 'Shoulders',
+  'Rear Delt Fly': 'Rear Delts',
+  'Arnold Press': 'Shoulders',
+  'Cable Lateral Raise': 'Shoulders',
+  'Pull-ups': 'Back/Bi',
+  'Chin-ups': 'Back/Bi',
+  'Barbell Row': 'Back',
+  'Cable Row': 'Back',
+  'Seated Row': 'Back',
+  'Lat Pulldown': 'Back',
+  'Single Arm DB Row': 'Back',
+  'Face Pulls': 'Rear Delts',
+  Shrugs: 'Traps',
+  'Bicep Curl': 'Biceps',
+  'DB Curl': 'Biceps',
+  'Hammer Curl': 'Biceps',
+  'Incline DB Curl': 'Biceps',
+  'Preacher Curl': 'Biceps',
+  'Cable Curl': 'Biceps',
+  'Reverse Curl': 'Biceps',
+  'Tricep Pushdown': 'Triceps',
+  'Skull Crushers': 'Triceps',
+  'Overhead Tricep Extension': 'Triceps',
+  'Close Grip Bench': 'Triceps',
+  'Tricep Kickback': 'Triceps',
+  Squat: 'Quads',
+  'Front Squat': 'Quads',
+  'Romanian Deadlift': 'Hamstrings',
+  Deadlift: 'Back/Legs',
+  'Leg Press': 'Quads',
+  'Hack Squat': 'Quads',
+  'Leg Curl': 'Hamstrings',
+  'Leg Extension': 'Quads',
+  'Calf Raise': 'Calves',
+  'Seated Calf Raise': 'Calves',
+  'Hip Thrust': 'Glutes',
+  'Bulgarian Split Squat': 'Quads/Glutes',
+  Lunges: 'Quads/Glutes',
+  'Glute Kickback': 'Glutes',
+  'Nordic Curl': 'Hamstrings',
+}
+const ALL_SPLITS = [
+  {
+    id: 'ppl',
+    emoji: '💪',
+    name: 'Push / Pull / Legs',
+    desc: 'Most popular. Best for 5–6 days.',
+    days: ['Push', 'Pull', 'Legs'],
+  },
+  {
+    id: 'ul',
+    emoji: '🔄',
+    name: 'Upper / Lower',
+    desc: 'Great balance. Best for 4 days.',
+    days: ['Upper', 'Lower'],
+  },
+  {
+    id: 'fb',
+    emoji: '⚡',
+    name: 'Full Body',
+    desc: 'Train everything each session.',
+    days: ['Full Body'],
+  },
+  {
+    id: 'bro',
+    emoji: '🏆',
+    name: 'Bro Split',
+    desc: 'One muscle group per day.',
+    days: ['Chest', 'Back', 'Shoulders', 'Arms', 'Legs'],
+  },
+  {
+    id: 'arnold',
+    emoji: '🦁',
+    name: 'Arnold Split',
+    desc: 'Chest+Back, Shoulders+Arms, Legs.',
+    days: ['Chest & Back', 'Shoulders & Arms', 'Legs'],
+  },
+]
+const FREQ_OPTS = [
+  { id: '1-3', label: '1 – 3 days', sub: 'Just getting started or busy schedule', dots: 2 },
+  { id: '4-5', label: '4 – 5 days', sub: 'Consistent trainer, solid commitment', dots: 4 },
+  { id: '6-7', label: '6 – 7 days', sub: 'Dedicated, advanced lifter', dots: 6 },
+]
 
-const DAYS_MON=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
-const JS_TO_MON=[6,0,1,2,3,4,5];
-const today=new Date();
-const todayMonIdx=JS_TO_MON[today.getDay()];
-const getWeekDates=()=>{const d=[];for(let i=0;i<7;i++){const dt=new Date(today);dt.setDate(today.getDate()-todayMonIdx+i);d.push(dt.getDate());}return d;};
-const weekDates=getWeekDates();
-const ini=n=>n.trim()?n.trim().split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2):"U";
-const fmtDate=dt=>new Date(dt).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
-const localDateStr=ts=>{const d=new Date(ts);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;};
-const getMonthLabel=dt=>new Date(dt).toLocaleDateString("en-GB",{month:"long",year:"numeric"});
-const CIRC=2*Math.PI*16;
+const DAYS_MON = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const JS_TO_MON = [6, 0, 1, 2, 3, 4, 5]
+const today = new Date()
+const todayMonIdx = JS_TO_MON[today.getDay()]
+const getWeekDates = () => {
+  const d = []
+  for (let i = 0; i < 7; i++) {
+    const dt = new Date(today)
+    dt.setDate(today.getDate() - todayMonIdx + i)
+    d.push(dt.getDate())
+  }
+  return d
+}
+const weekDates = getWeekDates()
+const ini = (n) =>
+  n.trim()
+    ? n
+        .trim()
+        .split(' ')
+        .map((w) => w[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
+    : 'U'
+const fmtDate = (dt) =>
+  new Date(dt).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+const localDateStr = (ts) => {
+  const d = new Date(ts)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+const getMonthLabel = (dt) =>
+  new Date(dt).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+const CIRC = 2 * Math.PI * 16
 
 /* ═══════════════════════════════════════
    MAIN APP
 ═══════════════════════════════════════ */
 export default function App() {
-  const { user, loading: authLoading, signOut, signInWithGoogle } = useAuth();
+  const { user, loading: authLoading, signOut, signInWithGoogle } = useAuth()
   const {
-    profile, programs: dbPrograms, sessionLog: dbSessionLog,
-    workoutState: dbWorkoutState, loading: dataLoading,
-    saveProgram, deleteProgram, updateProgramExercises,
-    saveSession, deleteSession, saveWorkoutState, updateProfile, deleteAccount
-  } = useData(user);
+    profile,
+    programs: dbPrograms,
+    sessionLog: dbSessionLog,
+    workoutState: dbWorkoutState,
+    loading: dataLoading,
+    saveProgram,
+    deleteProgram,
+    updateProgramExercises,
+    saveSession,
+    deleteSession,
+    saveWorkoutState,
+    updateProfile,
+    deleteAccount,
+  } = useData(user)
 
   const [screen, setScreen] = useState(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem('overload_programs'));
-      return (saved && saved.length > 0) ? "main" : "splash";
-    } catch { return "splash"; }
-  });
-  const [showAddWorkout, setShowAddWorkout] = useState(false);
-  const [obFreq, setObFreq] = useState(null);
-  const [obSplit, setObSplit] = useState(null);
-  const [obExs, setObExs] = useState({});
-  const [obExStep, setObExStep] = useState(0);
+      const saved = JSON.parse(localStorage.getItem('overload_programs'))
+      return saved && saved.length > 0 ? 'main' : 'splash'
+    } catch {
+      return 'splash'
+    }
+  })
+  const [showAddWorkout, setShowAddWorkout] = useState(false)
+  const [obFreq, setObFreq] = useState(null)
+  const [obSplit, setObSplit] = useState(null)
+  const [obExs, setObExs] = useState({})
+  const [obExStep, setObExStep] = useState(0)
   // Local state (synced to Supabase on changes, persisted to localStorage for guests)
   const [programs, setPrograms] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('overload_programs')) || []; } catch { return []; }
-  });
+    try {
+      return JSON.parse(localStorage.getItem('overload_programs')) || []
+    } catch {
+      return []
+    }
+  })
   const [sessionLog, setSessionLog] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('overload_sessionLog')) || []; } catch { return []; }
-  });
+    try {
+      return JSON.parse(localStorage.getItem('overload_sessionLog')) || []
+    } catch {
+      return []
+    }
+  })
   const [wSets, setWSets] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('overload_wSets')) || {}; } catch { return {}; }
-  });
-  const [tab, setTab] = useState("home");
-  const [sessionScreen, setSessionScreen] = useState(null);
-  const [editingDay, setEditDay] = useState(null);
-  const [editSearch, setEditS] = useState("");
-  const [collapsedDone, setCollapsedDone] = useState({});
-  const [trainedDays, setTrained] = useState({});
-  const [lastTs, setLastTs] = useState({});
+    try {
+      return JSON.parse(localStorage.getItem('overload_wSets')) || {}
+    } catch {
+      return {}
+    }
+  })
+  const [tab, setTab] = useState('home')
+  const [sessionScreen, setSessionScreen] = useState(null)
+  const [editingDay, setEditDay] = useState(null)
+  const [editSearch, setEditS] = useState('')
+  const [collapsedDone, setCollapsedDone] = useState({})
+  const [trainedDays, setTrained] = useState({})
+  const [lastTs, setLastTs] = useState({})
 
-  const [viewingDayIdx, setViewingDayIdx] = useState(null);
-  const [selectedProgressEx, setSelEx] = useState(null);
-  const [expandedSess, setExpS] = useState({});
-  const [userName, setUserName] = useState("Athlete");
-  const [editingName, setEditName] = useState(false);
-  const [nameInput, setNameInput] = useState("");
-  const [units, setUnits] = useState("kg");
-  const [notifEnabled, setNotif] = useState(false);
-  const [toast, setToast] = useState(null);
-  const toastRef = useRef(null);
-  const [progSubTab, setProgSubTab] = useState("strength");
-  const [progRange, setProgRange] = useState("All");
-  const [progExCat, setProgExCat] = useState(null);
-  const [expandedStr, setExpStr] = useState({});
+  const [viewingDayIdx, setViewingDayIdx] = useState(null)
+  const [selectedProgressEx, setSelEx] = useState(null)
+  const [expandedSess, setExpS] = useState({})
+  const [userName, setUserName] = useState('Athlete')
+  const [editingName, setEditName] = useState(false)
+  const [nameInput, setNameInput] = useState('')
+  const [units, setUnits] = useState('kg')
+  const [notifEnabled, setNotif] = useState(false)
+  const [toast, setToast] = useState(null)
+  const toastRef = useRef(null)
+  const [progSubTab, setProgSubTab] = useState('strength')
+  const [progRange, setProgRange] = useState('All')
+  const [progExCat, setProgExCat] = useState(null)
+  const [expandedStr, setExpStr] = useState({})
 
   // Persist guest data locally so it survives page reloads / OAuth redirects
-  useEffect(() => { localStorage.setItem('overload_programs', JSON.stringify(programs)); }, [programs]);
-  useEffect(() => { localStorage.setItem('overload_sessionLog', JSON.stringify(sessionLog)); }, [sessionLog]);
-  useEffect(() => { localStorage.setItem('overload_wSets', JSON.stringify(wSets)); }, [wSets]);
+  useEffect(() => {
+    localStorage.setItem('overload_programs', JSON.stringify(programs))
+  }, [programs])
+  useEffect(() => {
+    localStorage.setItem('overload_sessionLog', JSON.stringify(sessionLog))
+  }, [sessionLog])
+  useEffect(() => {
+    localStorage.setItem('overload_wSets', JSON.stringify(wSets))
+  }, [wSets])
 
   // Sync Supabase data to local state — the backend is the source of truth once migration has settled
   useEffect(() => {
-    if (!user || dataLoading) return;
-    const migrated = localStorage.getItem('overload_migrated') === 'true';
+    if (!user || dataLoading) return
+    const migrated = localStorage.getItem('overload_migrated') === 'true'
     if (migrated) {
       // Fully trust the DB for programs/sessions, including when empty (e.g. after Delete Account).
-      setPrograms(dbPrograms.map(p => ({
-        id: p.id, split: { id: p.split_id, name: p.split_name },
-        days: p.days, exs: p.exercises
-      })));
-      setSessionLog(dbSessionLog);
+      setPrograms(
+        dbPrograms.map((p) => ({
+          id: p.id,
+          split: { id: p.split_id, name: p.split_name },
+          days: p.days,
+          exs: p.exercises,
+        })),
+      )
+      setSessionLog(dbSessionLog)
       // workoutState is different: a newly-added exercise gets a local placeholder "empty set" row
       // before it's ever saved to the backend, so we merge in the DB's saved values rather than
       // wholesale replacing — otherwise every not-yet-saved exercise would show 0 sets.
-      setWSets(p => ({ ...p, ...dbWorkoutState }));
+      setWSets((p) => ({ ...p, ...dbWorkoutState }))
     } else {
       // Migration hasn't finished yet — don't let an empty DB snapshot wipe not-yet-synced guest data
       if (dbPrograms.length > 0) {
-        setPrograms(dbPrograms.map(p => ({
-          id: p.id, split: { id: p.split_id, name: p.split_name },
-          days: p.days, exs: p.exercises
-        })));
+        setPrograms(
+          dbPrograms.map((p) => ({
+            id: p.id,
+            split: { id: p.split_id, name: p.split_name },
+            days: p.days,
+            exs: p.exercises,
+          })),
+        )
       }
-      if (dbSessionLog.length > 0) setSessionLog(dbSessionLog);
-      if (Object.keys(dbWorkoutState).length > 0) setWSets(p => ({ ...p, ...dbWorkoutState }));
+      if (dbSessionLog.length > 0) setSessionLog(dbSessionLog)
+      if (Object.keys(dbWorkoutState).length > 0) setWSets((p) => ({ ...p, ...dbWorkoutState }))
     }
     if (profile) {
-      if (profile.name) setUserName(profile.name);
-      if (profile.units) setUnits(profile.units);
-      if (profile.notif_enabled !== undefined) setNotif(profile.notif_enabled);
+      if (profile.name) setUserName(profile.name)
+      if (profile.units) setUnits(profile.units)
+      if (profile.notif_enabled !== undefined) setNotif(profile.notif_enabled)
     }
-    if (dbPrograms.length > 0 && screen === 'splash') setScreen('main');
-  }, [user, dataLoading, dbPrograms, dbSessionLog, dbWorkoutState, profile]);
+    if (dbPrograms.length > 0 && screen === 'splash') setScreen('main')
+  }, [user, dataLoading, dbPrograms, dbSessionLog, dbWorkoutState, profile])
 
   // One-time migration: push guest data (from localStorage) into the new account
   useEffect(() => {
-    if (!user || dataLoading) return;
-    if (localStorage.getItem('overload_migration_started') === 'true') return;
+    if (!user || dataLoading) return
+    if (localStorage.getItem('overload_migration_started') === 'true') return
     if (dbPrograms.length === 0 && (programs.length > 0 || sessionLog.length > 0)) {
-      localStorage.setItem('overload_migration_started', 'true');
-      (async () => {
-        for (const prog of programs) await saveProgram(prog);
-        for (const sess of [...sessionLog].reverse()) await saveSession(sess);
-        for (const [exName, sets] of Object.entries(wSets)) await saveWorkoutState(exName, sets);
-        localStorage.removeItem('overload_programs');
-        localStorage.removeItem('overload_sessionLog');
-        localStorage.removeItem('overload_wSets');
-        localStorage.setItem('overload_migrated', 'true');
-        setScreen('main');
-      })();
+      localStorage.setItem('overload_migration_started', 'true')
+      ;(async () => {
+        for (const prog of programs) await saveProgram(prog)
+        for (const sess of [...sessionLog].reverse()) await saveSession(sess)
+        for (const [exName, sets] of Object.entries(wSets)) await saveWorkoutState(exName, sets)
+        localStorage.removeItem('overload_programs')
+        localStorage.removeItem('overload_sessionLog')
+        localStorage.removeItem('overload_wSets')
+        localStorage.setItem('overload_migrated', 'true')
+        setScreen('main')
+      })()
     } else {
-      localStorage.setItem('overload_migration_started', 'true');
-      localStorage.setItem('overload_migrated', 'true'); // nothing to migrate — DB can be trusted immediately
+      localStorage.setItem('overload_migration_started', 'true')
+      localStorage.setItem('overload_migrated', 'true') // nothing to migrate — DB can be trusted immediately
     }
-  }, [user, dataLoading]);
+  }, [user, dataLoading])
 
   // Rebuild this week's trained-day markers and per-day last-trained timestamps from real session
   // history on every load/change, instead of only mutating them in memory when a workout finishes.
   useEffect(() => {
-    const weekMap = {};
+    const weekMap = {}
     for (let i = 0; i < 7; i++) {
-      const dt = new Date(today); dt.setDate(today.getDate() - todayMonIdx + i);
-      const key = localDateStr(dt.getTime());
-      const names = [...new Set(sessionLog.filter(s => localDateStr(s.date) === key).map(s => s.dayName))];
-      if (names.length) weekMap[i] = names;
+      const dt = new Date(today)
+      dt.setDate(today.getDate() - todayMonIdx + i)
+      const key = localDateStr(dt.getTime())
+      const names = [
+        ...new Set(sessionLog.filter((s) => localDateStr(s.date) === key).map((s) => s.dayName)),
+      ]
+      if (names.length) weekMap[i] = names
     }
-    setTrained(weekMap);
-    const lastMap = {};
-    sessionLog.forEach(s => { if (!lastMap[s.dayName] || s.date > lastMap[s.dayName]) lastMap[s.dayName] = s.date; });
-    setLastTs(lastMap);
-  }, [sessionLog]);
+    setTrained(weekMap)
+    const lastMap = {}
+    sessionLog.forEach((s) => {
+      if (!lastMap[s.dayName] || s.date > lastMap[s.dayName]) lastMap[s.dayName] = s.date
+    })
+    setLastTs(lastMap)
+  }, [sessionLog])
 
-  const showToast = msg => {
-    setToast(msg);
-    if (toastRef.current) clearTimeout(toastRef.current);
-    toastRef.current = setTimeout(() => setToast(null), 2800);
-  };
+  const showToast = (msg) => {
+    setToast(msg)
+    if (toastRef.current) clearTimeout(toastRef.current)
+    toastRef.current = setTimeout(() => setToast(null), 2800)
+  }
 
-  const toggleObEx = (day, ex) => setObExs(p => { const c = p[day]||[]; return {...p,[day]:c.includes(ex)?c.filter(e=>e!==ex):[...c,ex]}; });
-  const splitDays = obSplit?.days||[];
-  const curObDay = splitDays[obExStep]||"";
-  const isLastDay = obExStep === splitDays.length-1;
+  const toggleObEx = (day, ex) =>
+    setObExs((p) => {
+      const c = p[day] || []
+      return { ...p, [day]: c.includes(ex) ? c.filter((e) => e !== ex) : [...c, ex] }
+    })
+  const splitDays = obSplit?.days || []
+  const curObDay = splitDays[obExStep] || ''
+  const isLastDay = obExStep === splitDays.length - 1
 
   const addProgram = async () => {
-    if (!obSplit) { setScreen("main"); return; }
-    const prog = { id: Date.now(), split: obSplit, days: obSplit.days, exs: obExs };
-    setPrograms(p => [...p, prog]);
-    const ws = {...wSets};
-    obSplit.days.forEach(d => { (obExs[d]||[]).forEach(ex => { if(!ws[ex]) ws[ex]=[{w:"",r:"",done:false,lastW:"—",lastR:"—",typed:false}]; }); });
-    setWSets(ws);
-    if (user) await saveProgram(prog);
-    setScreen("main");
-  };
+    if (!obSplit) {
+      setScreen('main')
+      return
+    }
+    const prog = { id: Date.now(), split: obSplit, days: obSplit.days, exs: obExs }
+    setPrograms((p) => [...p, prog])
+    const ws = { ...wSets }
+    obSplit.days.forEach((d) => {
+      ;(obExs[d] || []).forEach((ex) => {
+        if (!ws[ex]) ws[ex] = [{ w: '', r: '', done: false, lastW: '—', lastR: '—', typed: false }]
+      })
+    })
+    setWSets(ws)
+    if (user) await saveProgram(prog)
+    setScreen('main')
+  }
 
-  const handleDeleteWorkout = async dayName => {
-    setPrograms(p => p.map(prog => prog.days.includes(dayName)
-      ? { ...prog, days: prog.days.filter(d => d !== dayName), exs: Object.fromEntries(Object.entries(prog.exs).filter(([d]) => d !== dayName)) }
-      : prog
-    ).filter(prog => prog.days.length > 0));
-    setSessionScreen(null);
-    if (user) await deleteProgram(dayName);
-    showToast(`${dayName} removed`);
-  };
+  const handleDeleteWorkout = async (dayName) => {
+    setPrograms((p) =>
+      p
+        .map((prog) =>
+          prog.days.includes(dayName)
+            ? {
+                ...prog,
+                days: prog.days.filter((d) => d !== dayName),
+                exs: Object.fromEntries(Object.entries(prog.exs).filter(([d]) => d !== dayName)),
+              }
+            : prog,
+        )
+        .filter((prog) => prog.days.length > 0),
+    )
+    setSessionScreen(null)
+    if (user) await deleteProgram(dayName)
+    showToast(`${dayName} removed`)
+  }
 
-  const allDays = [...new Set(programs.flatMap(p => p.days))];
-  const getDayExs = d => { for(const p of programs){ if(p.exs[d]) return p.exs[d]; } return []; };
+  const allDays = [...new Set(programs.flatMap((p) => p.days))]
+  const getDayExs = (d) => {
+    for (const p of programs) {
+      if (p.exs[d]) return p.exs[d]
+    }
+    return []
+  }
 
-  const addSet = ex => setWSets(p => { const sets=p[ex]||[]; const prev=sets[sets.length-1]; return {...p,[ex]:[...sets,{w:prev?.lastW!=="—"?prev.lastW:"",r:prev?.lastR!=="—"?prev.lastR:"",done:false,lastW:prev?.lastW||"—",lastR:prev?.lastR||"—",typed:false}]}; });
-  const removeSet = (ex, idx) => setWSets(p => { const s=[...(p[ex]||[])]; if(s.length<=1) return p; s.splice(idx,1); return {...p,[ex]:s}; });
-  const updateSet = (ex, i, f, v) => setWSets(p => { const s=[...(p[ex]||[])]; s[i]={...s[i],[f]:v,typed:true}; return {...p,[ex]:s}; });
-  const tickSet = (ex, i) => setWSets(p => { const s=[...(p[ex]||[])]; s[i]={...s[i],done:!s[i].done}; const next={...p,[ex]:s}; if(!s[i].done&&s.every(set=>set.done)) setTimeout(()=>setCollapsedDone(prev=>({...prev,[ex]:true})),300); return next; });
+  const addSet = (ex) =>
+    setWSets((p) => {
+      const sets = p[ex] || []
+      const prev = sets[sets.length - 1]
+      return {
+        ...p,
+        [ex]: [
+          ...sets,
+          {
+            w: prev?.lastW !== '—' ? prev.lastW : '',
+            r: prev?.lastR !== '—' ? prev.lastR : '',
+            done: false,
+            lastW: prev?.lastW || '—',
+            lastR: prev?.lastR || '—',
+            typed: false,
+          },
+        ],
+      }
+    })
+  const removeSet = (ex, idx) =>
+    setWSets((p) => {
+      const s = [...(p[ex] || [])]
+      if (s.length <= 1) return p
+      s.splice(idx, 1)
+      return { ...p, [ex]: s }
+    })
+  const updateSet = (ex, i, f, v) =>
+    setWSets((p) => {
+      const s = [...(p[ex] || [])]
+      s[i] = { ...s[i], [f]: v, typed: true }
+      return { ...p, [ex]: s }
+    })
+  const tickSet = (ex, i) =>
+    setWSets((p) => {
+      const s = [...(p[ex] || [])]
+      s[i] = { ...s[i], done: !s[i].done }
+      const next = { ...p, [ex]: s }
+      if (!s[i].done && s.every((set) => set.done))
+        setTimeout(() => setCollapsedDone((prev) => ({ ...prev, [ex]: true })), 300)
+      return next
+    })
   const removeExFromDay = async (day, ex) => {
-    const newList = getDayExs(day).filter(e => e !== ex);
-    setPrograms(p => p.map(prog => prog.exs[day] ? { ...prog, exs: { ...prog.exs, [day]: newList } } : prog));
-    if (user) await updateProgramExercises(day, newList);
-  };
+    const newList = getDayExs(day).filter((e) => e !== ex)
+    setPrograms((p) =>
+      p.map((prog) => (prog.exs[day] ? { ...prog, exs: { ...prog.exs, [day]: newList } } : prog)),
+    )
+    if (user) await updateProgramExercises(day, newList)
+  }
   const addExToDay = async (day, ex) => {
-    if(!ex.trim()) return;
-    const trimmed = ex.trim();
-    const newList = [...getDayExs(day), trimmed];
-    setPrograms(p => p.map(prog => prog.exs[day] ? { ...prog, exs: { ...prog.exs, [day]: newList } } : prog));
-    if(!wSets[trimmed]) setWSets(pw => ({...pw,[trimmed]:[{w:"",r:"",done:false,lastW:"—",lastR:"—",typed:false}]}));
-    setEditS("");
-    if (user) await updateProgramExercises(day, newList);
-  };
-  const isPR = (ex, si, w, typed) => { if(!typed||!w) return false; const lw=wSets[ex]?.[si]?.lastW; if(!lw||lw==="—"||lw==="BW") return false; return parseFloat(w)>parseFloat(lw); };
-  const isExDone = ex => { const s=wSets[ex]||[]; return s.length>0&&s.every(s=>s.done); };
-  const getBestSet = ex => { const sets=(wSets[ex]||[]).filter(s=>s.done&&s.typed&&s.w); if(!sets.length) return null; const b=sets.reduce((a,s)=>parseFloat(s.w)>parseFloat(a.w)?s:a,sets[0]); return `${b.w}${units}×${b.r}`; };
+    if (!ex.trim()) return
+    const trimmed = ex.trim()
+    const newList = [...getDayExs(day), trimmed]
+    setPrograms((p) =>
+      p.map((prog) => (prog.exs[day] ? { ...prog, exs: { ...prog.exs, [day]: newList } } : prog)),
+    )
+    if (!wSets[trimmed])
+      setWSets((pw) => ({
+        ...pw,
+        [trimmed]: [{ w: '', r: '', done: false, lastW: '—', lastR: '—', typed: false }],
+      }))
+    setEditS('')
+    if (user) await updateProgramExercises(day, newList)
+  }
+  const isPR = (ex, si, w, typed) => {
+    if (!typed || !w) return false
+    const lw = wSets[ex]?.[si]?.lastW
+    if (!lw || lw === '—' || lw === 'BW') return false
+    return parseFloat(w) > parseFloat(lw)
+  }
+  const isExDone = (ex) => {
+    const s = wSets[ex] || []
+    return s.length > 0 && s.every((s) => s.done)
+  }
+  const getBestSet = (ex) => {
+    const sets = (wSets[ex] || []).filter((s) => s.done && s.typed && s.w)
+    if (!sets.length) return null
+    const b = sets.reduce((a, s) => (parseFloat(s.w) > parseFloat(a.w) ? s : a), sets[0])
+    return `${b.w}${units}×${b.r}`
+  }
 
-  const getSessPct = dayName => {
-    const todayKey=localDateStr(Date.now());
-    const completedToday=sessionLog.find(s=>s.dayName===dayName&&localDateStr(s.date)===todayKey);
-    if(completedToday){ const totalSaved=completedToday.exercises.reduce((a,ex)=>a+ex.sets.length,0); const totalExpected=getDayExs(dayName).reduce((a,ex)=>a+(wSets[ex]?.length||0),0); if(totalExpected===0) return 100; return Math.min(100,Math.round(totalSaved/totalExpected*100)); }
-    const exs=getDayExs(dayName); const tot=exs.reduce((a,ex)=>a+(wSets[ex]?.length||0),0); const done=exs.reduce((a,ex)=>a+(wSets[ex]?.filter(s=>s.done).length||0),0); return tot>0?Math.round(done/tot*100):0;
-  };
-  const getSessSetCounts = dayName => { const exs=getDayExs(dayName); const tot=exs.reduce((a,ex)=>a+(wSets[ex]?.length||0),0); const done=exs.reduce((a,ex)=>a+(wSets[ex]?.filter(s=>s.done).length||0),0); return {tot,done}; };
-  const anyDone = dayName => getDayExs(dayName).some(ex=>(wSets[ex]||[]).some(s=>s.done));
+  const getSessPct = (dayName) => {
+    const todayKey = localDateStr(Date.now())
+    const completedToday = sessionLog.find(
+      (s) => s.dayName === dayName && localDateStr(s.date) === todayKey,
+    )
+    if (completedToday) {
+      const totalSaved = completedToday.exercises.reduce((a, ex) => a + ex.sets.length, 0)
+      const totalExpected = getDayExs(dayName).reduce((a, ex) => a + (wSets[ex]?.length || 0), 0)
+      if (totalExpected === 0) return 100
+      return Math.min(100, Math.round((totalSaved / totalExpected) * 100))
+    }
+    const exs = getDayExs(dayName)
+    const tot = exs.reduce((a, ex) => a + (wSets[ex]?.length || 0), 0)
+    const done = exs.reduce((a, ex) => a + (wSets[ex]?.filter((s) => s.done).length || 0), 0)
+    return tot > 0 ? Math.round((done / tot) * 100) : 0
+  }
+  const getSessSetCounts = (dayName) => {
+    const exs = getDayExs(dayName)
+    const tot = exs.reduce((a, ex) => a + (wSets[ex]?.length || 0), 0)
+    const done = exs.reduce((a, ex) => a + (wSets[ex]?.filter((s) => s.done).length || 0), 0)
+    return { tot, done }
+  }
+  const anyDone = (dayName) =>
+    getDayExs(dayName).some((ex) => (wSets[ex] || []).some((s) => s.done))
 
   // Finishing a workout: for signed-in users, the DB write happens first and the UI only reflects
   // success once Supabase confirms it (backend is the source of truth) — on failure we show an
   // error and leave everything as-is rather than silently marking it done. Guest mode has no
   // backend to confirm against, so it stays optimistic/local-only.
-  const doFinish = async dayName => {
-    const exNames=getDayExs(dayName);
-    const untouched=exNames.filter(ex=>(wSets[ex]||[]).every(s=>!s.done));
-    const isPartial=untouched.length>0;
-    const sessExs=exNames.map(ex=>({name:ex,sets:(wSets[ex]||[]).filter(s=>s.typed||s.done).map(s=>({w:s.w||s.lastW,r:s.r||s.lastR}))})).filter(e=>e.sets.length>0);
-    const sessionPayload={dayName,exercises:sessExs,partial:isPartial};
+  const doFinish = async (dayName) => {
+    const exNames = getDayExs(dayName)
+    const untouched = exNames.filter((ex) => (wSets[ex] || []).every((s) => !s.done))
+    const isPartial = untouched.length > 0
+    const sessExs = exNames
+      .map((ex) => ({
+        name: ex,
+        sets: (wSets[ex] || [])
+          .filter((s) => s.typed || s.done)
+          .map((s) => ({ w: s.w || s.lastW, r: s.r || s.lastR })),
+      }))
+      .filter((e) => e.sets.length > 0)
+    const sessionPayload = { dayName, exercises: sessExs, partial: isPartial }
 
     if (user) {
-      const {error}=await saveSession(sessionPayload);
-      if (error) { showToast("Couldn't save — check your connection and try again"); return; }
+      const { error } = await saveSession(sessionPayload)
+      if (error) {
+        showToast("Couldn't save — check your connection and try again")
+        return
+      }
       // saveSession already updated the hook's own state; the sync effect mirrors it into local state.
     } else {
-      const todayKey=localDateStr(Date.now());
-      const existingIdx=sessionLog.findIndex(s=>s.dayName===dayName&&localDateStr(s.date)===todayKey);
-      const newSession={id:Date.now(),date:Date.now(),...sessionPayload};
-      if(existingIdx>=0){ setSessionLog(p=>{const u=[...p];u[existingIdx]={...u[existingIdx],exercises:sessExs,partial:isPartial};return u;}); }
-      else { setSessionLog(p=>[newSession,...p]); }
-    }
-
-    const nextWSets={};
-    for (const ex of exNames) {
-      const updatedSets=isPartial?(wSets[ex]||[]).map(s=>({...s,lastW:s.typed&&s.w?s.w:s.lastW,lastR:s.typed&&s.r?s.r:s.lastR})):(wSets[ex]||[]).map(s=>({...s,done:false,lastW:s.typed&&s.w?s.w:s.lastW,lastR:s.typed&&s.r?s.r:s.lastR,w:s.typed&&s.w?s.w:s.lastW!=="—"?s.lastW:"",r:s.typed&&s.r?s.r:s.lastR!=="—"?s.lastR:"",typed:false}));
-      nextWSets[ex]=updatedSets;
-      if (user) {
-        const {error}=await saveWorkoutState(ex, updatedSets);
-        if (error) showToast(`Couldn't save ${ex} — try again`);
+      const todayKey = localDateStr(Date.now())
+      const existingIdx = sessionLog.findIndex(
+        (s) => s.dayName === dayName && localDateStr(s.date) === todayKey,
+      )
+      const newSession = { id: Date.now(), date: Date.now(), ...sessionPayload }
+      if (existingIdx >= 0) {
+        setSessionLog((p) => {
+          const u = [...p]
+          u[existingIdx] = { ...u[existingIdx], exercises: sessExs, partial: isPartial }
+          return u
+        })
+      } else {
+        setSessionLog((p) => [newSession, ...p])
       }
     }
-    if (!user) setWSets(p=>({...p,...nextWSets}));
+
+    const nextWSets = {}
+    for (const ex of exNames) {
+      const updatedSets = isPartial
+        ? (wSets[ex] || []).map((s) => ({
+            ...s,
+            lastW: s.typed && s.w ? s.w : s.lastW,
+            lastR: s.typed && s.r ? s.r : s.lastR,
+          }))
+        : (wSets[ex] || []).map((s) => ({
+            ...s,
+            done: false,
+            lastW: s.typed && s.w ? s.w : s.lastW,
+            lastR: s.typed && s.r ? s.r : s.lastR,
+            w: s.typed && s.w ? s.w : s.lastW !== '—' ? s.lastW : '',
+            r: s.typed && s.r ? s.r : s.lastR !== '—' ? s.lastR : '',
+            typed: false,
+          }))
+      nextWSets[ex] = updatedSets
+      if (user) {
+        const { error } = await saveWorkoutState(ex, updatedSets)
+        if (error) showToast(`Couldn't save ${ex} — try again`)
+      }
+    }
+    if (!user) setWSets((p) => ({ ...p, ...nextWSets }))
     // Signed-in: saveWorkoutState already updated the hook's state; the sync effect mirrors it locally.
 
-    if(!isPartial){ setCollapsedDone({}); setSessionScreen(null); }
-    showToast(`${dayName} logged ✓`);
-  };
+    if (!isPartial) {
+      setCollapsedDone({})
+      setSessionScreen(null)
+    }
+    showToast(`${dayName} logged ✓`)
+  }
 
-  const buildGraphData = exName => {
-    if(!exName||!sessionLog.length) return null;
-    const r=sessionLog.filter(s=>s.exercises&&s.exercises.some(e=>e.name===exName)).slice(0,8).reverse();
-    if(r.length<2) return null;
-    return r.map((s,i)=>{const ex=s.exercises.find(e=>e.name===exName);if(!ex||!ex.sets.length)return null;const mk=Math.max(...ex.sets.map(s=>parseFloat(s.w)||0).filter(v=>v>0));return mk>0?{w:`S${i+1}`,kg:mk}:null;}).filter(Boolean);
-  };
+  const buildGraphData = (exName) => {
+    if (!exName || !sessionLog.length) return null
+    const r = sessionLog
+      .filter((s) => s.exercises && s.exercises.some((e) => e.name === exName))
+      .slice(0, 8)
+      .reverse()
+    if (r.length < 2) return null
+    return r
+      .map((s, i) => {
+        const ex = s.exercises.find((e) => e.name === exName)
+        if (!ex || !ex.sets.length) return null
+        const mk = Math.max(...ex.sets.map((s) => parseFloat(s.w) || 0).filter((v) => v > 0))
+        return mk > 0 ? { w: `S${i + 1}`, kg: mk } : null
+      })
+      .filter(Boolean)
+  }
   const buildPR = () => {
-    if(!sessionLog.length) return null;
-    let bEx=null,bGain=0,sKg=0,eKg=0;
-    const exNames=[...new Set(sessionLog.flatMap(s=>s.exercises?s.exercises.map(e=>e.name):[]))];
-    exNames.forEach(ex=>{const r=sessionLog.filter(s=>s.exercises&&s.exercises.some(e=>e.name===ex)).slice(0,20).reverse();if(r.length<2)return;const f=r[0].exercises.find(e=>e.name===ex);const l=r[r.length-1].exercises.find(e=>e.name===ex);if(!f||!l||!f.sets.length||!l.sets.length)return;const fm=Math.max(...f.sets.map(s=>parseFloat(s.w)||0));const lm=Math.max(...l.sets.map(s=>parseFloat(s.w)||0));if(lm-fm>bGain){bGain=lm-fm;bEx=ex;sKg=fm;eKg=lm;}});
-    return bEx?{ex:bEx,from:sKg,to:eKg,gain:bGain}:null;
-  };
-  const buildWeeklyStats = () => {const tot=sessionLog.reduce((a,s)=>a+s.exercises.reduce((b,ex)=>b+ex.sets.length,0),0);const wt=sessionLog.reduce((a,s)=>a+s.exercises.reduce((b,ex)=>b+ex.sets.reduce((c,st)=>c+((parseFloat(st.w)||0)*(parseInt(st.r)||0)),0),0),0);const reps=sessionLog.reduce((a,s)=>a+s.exercises.reduce((b,ex)=>b+ex.sets.reduce((c,st)=>c+(parseInt(st.r)||0),0),0),0);return{sets:tot,weight:wt,reps};};
+    if (!sessionLog.length) return null
+    let bEx = null,
+      bGain = 0,
+      sKg = 0,
+      eKg = 0
+    const exNames = [
+      ...new Set(sessionLog.flatMap((s) => (s.exercises ? s.exercises.map((e) => e.name) : []))),
+    ]
+    exNames.forEach((ex) => {
+      const r = sessionLog
+        .filter((s) => s.exercises && s.exercises.some((e) => e.name === ex))
+        .slice(0, 20)
+        .reverse()
+      if (r.length < 2) return
+      const f = r[0].exercises.find((e) => e.name === ex)
+      const l = r[r.length - 1].exercises.find((e) => e.name === ex)
+      if (!f || !l || !f.sets.length || !l.sets.length) return
+      const fm = Math.max(...f.sets.map((s) => parseFloat(s.w) || 0))
+      const lm = Math.max(...l.sets.map((s) => parseFloat(s.w) || 0))
+      if (lm - fm > bGain) {
+        bGain = lm - fm
+        bEx = ex
+        sKg = fm
+        eKg = lm
+      }
+    })
+    return bEx ? { ex: bEx, from: sKg, to: eKg, gain: bGain } : null
+  }
+  const buildWeeklyStats = () => {
+    const tot = sessionLog.reduce(
+      (a, s) => a + s.exercises.reduce((b, ex) => b + ex.sets.length, 0),
+      0,
+    )
+    const wt = sessionLog.reduce(
+      (a, s) =>
+        a +
+        s.exercises.reduce(
+          (b, ex) =>
+            b + ex.sets.reduce((c, st) => c + (parseFloat(st.w) || 0) * (parseInt(st.r) || 0), 0),
+          0,
+        ),
+      0,
+    )
+    const reps = sessionLog.reduce(
+      (a, s) =>
+        a +
+        s.exercises.reduce(
+          (b, ex) => b + ex.sets.reduce((c, st) => c + (parseInt(st.r) || 0), 0),
+          0,
+        ),
+      0,
+    )
+    return { sets: tot, weight: wt, reps }
+  }
 
-  const isDayDone = i => (trainedDays[i]||[]).length>0;
-  const getDaySessionLabel = i => (trainedDays[i]||[]).join("/").slice(0,5)||"";
-  const getLastTrained = day => {const ts=lastTs[day];if(!ts)return"Never";const diff=Math.floor((Date.now()-ts)/(1000*60*60*24));if(diff===0)return"Today";if(diff===1)return"Yesterday";return`${diff}d ago`;};
+  const isDayDone = (i) => (trainedDays[i] || []).length > 0
+  const getDaySessionLabel = (i) => (trainedDays[i] || []).join('/').slice(0, 5) || ''
+  const getLastTrained = (day) => {
+    const ts = lastTs[day]
+    if (!ts) return 'Never'
+    const diff = Math.floor((Date.now() - ts) / (1000 * 60 * 60 * 24))
+    if (diff === 0) return 'Today'
+    if (diff === 1) return 'Yesterday'
+    return `${diff}d ago`
+  }
 
-  const prData = buildPR();
-  const weekStats = buildWeeklyStats();
-  const todaySessions = trainedDays[todayMonIdx]||[];
-  let ctxText = "Tap a workout to start logging.";
-  let ctxOrange = false;
-  if(todaySessions.length>0){ const pct=getSessPct(todaySessions[0]); ctxText=`${todaySessions[0]} ${pct===100?"logged today ✓":`— ${pct}% today`}`; ctxOrange=pct<100; }
-  else { const lastDone=Object.entries(lastTs).sort((a,b)=>b[1]-a[1])[0]; if(lastDone){const diff=Math.floor((Date.now()-lastDone[1])/(1000*60*60*24));ctxText=`${lastDone[0]} — ${diff===0?"today":diff===1?"yesterday":`${diff} days ago`}. Up next?`;ctxOrange=true;} }
-  const progGraphData = selectedProgressEx?buildGraphData(selectedProgressEx):null;
-  const progGraphGain = progGraphData&&progGraphData.length>=2?`+${(progGraphData[progGraphData.length-1].kg-progGraphData[0].kg).toFixed(1)}${units}`:null;
+  const prData = buildPR()
+  const weekStats = buildWeeklyStats()
+  const todaySessions = trainedDays[todayMonIdx] || []
+  let ctxText = 'Tap a workout to start logging.'
+  let ctxOrange = false
+  if (todaySessions.length > 0) {
+    const pct = getSessPct(todaySessions[0])
+    ctxText = `${todaySessions[0]} ${pct === 100 ? 'logged today ✓' : `— ${pct}% today`}`
+    ctxOrange = pct < 100
+  } else {
+    const lastDone = Object.entries(lastTs).sort((a, b) => b[1] - a[1])[0]
+    if (lastDone) {
+      const diff = Math.floor((Date.now() - lastDone[1]) / (1000 * 60 * 60 * 24))
+      ctxText = `${lastDone[0]} — ${diff === 0 ? 'today' : diff === 1 ? 'yesterday' : `${diff} days ago`}. Up next?`
+      ctxOrange = true
+    }
+  }
+  const progGraphData = selectedProgressEx ? buildGraphData(selectedProgressEx) : null
+  const progGraphGain =
+    progGraphData && progGraphData.length >= 2
+      ? `+${(progGraphData[progGraphData.length - 1].kg - progGraphData[0].kg).toFixed(1)}${units}`
+      : null
 
   // Weekly volume — sets per day this week
-  const weeklyVol = DAYS_MON.map((_,i)=>{
-    const dt=new Date(today); dt.setDate(today.getDate()-todayMonIdx+i);
-    const dtStr=localDateStr(dt.getTime());
-    const daySessions=sessionLog.filter(s=>localDateStr(s.date)===dtStr);
-    const sets=daySessions.reduce((a,s)=>a+s.exercises.reduce((b,ex)=>b+ex.sets.length,0),0);
-    return{day:DAYS_MON[i].slice(0,1),sets,isToday:i===todayMonIdx,isFuture:i>todayMonIdx};
-  });
-  const maxVol=Math.max(...weeklyVol.map(d=>d.sets),1);
+  const weeklyVol = DAYS_MON.map((_, i) => {
+    const dt = new Date(today)
+    dt.setDate(today.getDate() - todayMonIdx + i)
+    const dtStr = localDateStr(dt.getTime())
+    const daySessions = sessionLog.filter((s) => localDateStr(s.date) === dtStr)
+    const sets = daySessions.reduce(
+      (a, s) => a + s.exercises.reduce((b, ex) => b + ex.sets.length, 0),
+      0,
+    )
+    return {
+      day: DAYS_MON[i].slice(0, 1),
+      sets,
+      isToday: i === todayMonIdx,
+      isFuture: i > todayMonIdx,
+    }
+  })
+  const maxVol = Math.max(...weeklyVol.map((d) => d.sets), 1)
 
   // Already existing programs split IDs
-  const existingSplitIds=new Set(programs.map(p=>p.split?.id).filter(Boolean));
-  const isViewingPast = viewingDayIdx!==null&&viewingDayIdx!==todayMonIdx;
+  const existingSplitIds = new Set(programs.map((p) => p.split?.id).filter(Boolean))
+  const isViewingPast = viewingDayIdx !== null && viewingDayIdx !== todayMonIdx
 
   // Show loading screen while checking auth
-  if(authLoading){ return(<div className="app"><style>{S}</style><div className="loading-screen"><div className="spinner"/><div className="loading-text">Loading Overload...</div></div></div>); }
-
-  /* ════ ONBOARDING ════ */
-  if(screen==="splash")return(<div className="app"><style>{S}</style><div className="splash"><div className="splash-space"/><div className="splash-bottom"><div className="splash-title u0">Track every lift.<br/>Beat it next time.</div><div className="splash-sub u1">The simplest progressive overload tracker.</div><button className="btn-p u2" onClick={()=>setScreen("ob_info1")}>Get Started</button><button className="btn-o u3" onClick={async()=>{await signInWithGoogle();}}>Already have an account</button></div></div></div>);
-  if(screen==="ob_info1")return(<div className="app"><style>{S}</style><div className="topbar"><button className="back-btn" onClick={()=>setScreen("splash")}>←</button></div><div className="ob-prog"><div className="ob-track"><div className="ob-fill" style={{width:"5%"}}/></div></div><div className="ob-info-pg"><div className="ob-info-top"><div className="u0"><div className="ob-q">What is progressive overload?</div></div><div style={{display:"flex",justifyContent:"center"}} className="u1"><div className="bar-visual">{[{h:30},{h:44},{h:58},{h:70},{h:85}].map((b,i)=><div key={i} className={`bv-bar${i===4?" hi":""}`} style={{width:38,height:b.h}}/>)}</div></div><div className="ob-body u2">If you lift <b>slightly more each week</b> — more weight, more reps, or more sets — your muscles must keep adapting and growing.<br/><br/>It's the most proven principle in all of fitness.</div></div><div className="ob-info-bottom"><button className="btn-p u3" onClick={()=>setScreen("ob_info2")}>Next →</button></div></div></div>);
-  if(screen==="ob_info2")return(<div className="app"><style>{S}</style><div className="topbar"><button className="back-btn" onClick={()=>setScreen("ob_info1")}>←</button></div><div className="ob-prog"><div className="ob-track"><div className="ob-fill" style={{width:"12%"}}/></div></div><div className="ob-info-pg"><div className="ob-info-top"><div className="u0"><div className="ob-q">Why most people stop progressing.</div></div><div className="u1"><div className="chart2">{[{lbl:"With tracking",pct:85,color:"var(--ch)"},{lbl:"Without tracking",pct:22,color:"var(--ink4)"}].map((r,i)=><div className="c2-row" key={i}><div className="c2-lbl">{r.lbl}</div><div className="c2-wrap"><div className="c2-bar" style={{width:`${r.pct}%`,background:r.color}}/></div><div className="c2-val" style={{color:r.color}}>{r.pct}%</div></div>)}</div></div><div className="ob-body u2">They train hard but <b>never write anything down.</b> Every session they're guessing the weight. Without a reference point, there's no overload.</div></div><div className="ob-info-bottom"><button className="btn-p u3" onClick={()=>setScreen("ob_bridge")}>Next →</button></div></div></div>);
-  if(screen==="ob_bridge")return(<div className="app"><style>{S}</style><div className="topbar"><button className="back-btn" onClick={()=>setScreen("ob_info2")}>←</button></div><div className="ob-prog"><div className="ob-track"><div className="ob-fill" style={{width:"20%"}}/></div></div><div className="bridge-pg"><div className="u0"><div className="bridge-title">Now let's build<br/>your program.</div><div className="bridge-sub">Takes 60 seconds. Set up your split and exercises so you're ready to start tracking today.</div></div><button className="btn-p u1" onClick={()=>setScreen("ob_freq")}>Let's go →</button></div></div>);
-  if(screen==="ob_freq")return(<div className="app"><style>{S}</style><div className="topbar"><button className="back-btn" onClick={()=>setScreen("ob_bridge")}>←</button></div><div className="ob-prog"><div className="ob-track"><div className="ob-fill" style={{width:"32%"}}/></div></div><div className="ob-pg"><div className="u0"><div className="ob-q">How often do<br/>you train?</div></div><div className="freq-list u1">{FREQ_OPTS.map(f=><div key={f.id} className={`freq-opt${obFreq===f.id?" on":""}`} onClick={()=>setObFreq(f.id)}><div className="freq-dots">{Array.from({length:f.dots},(_,i)=><div key={i} className="freq-dot"/>)}</div><div><div className="freq-title">{f.label}</div><div className="freq-sub">{f.sub}</div></div></div>)}</div><button className="btn-p u2" disabled={!obFreq} onClick={()=>setScreen("ob_split")}>Continue</button></div></div>);
-  if(screen==="ob_split")return(<div className="app"><style>{S}</style><div className="topbar"><button className="back-btn" onClick={()=>setScreen(programs.length>0?"main":"ob_freq")}>←</button></div><div className="ob-prog"><div className="ob-track"><div className="ob-fill" style={{width:"50%"}}/></div></div><div className="ob-pg"><div className="u0"><div className="ob-q">Pick your split.</div><div style={{fontSize:14,color:"var(--ink3)",marginTop:4}}>All splits shown</div></div><div className="split-list u1">{ALL_SPLITS.map(s=><div key={s.id} className={`split-opt${obSplit?.id===s.id?" on":""}`} onClick={()=>{setObSplit(s);setObExs({});setObExStep(0);}}><div className="split-emoji">{s.emoji}</div><div style={{flex:1}}><div className="split-name">{s.name}</div><div className="split-desc">{s.desc}</div></div><div className="split-chk">✓</div></div>)}</div><button className="btn-p u2" disabled={!obSplit} onClick={()=>setScreen("ob_exercises")}>Continue</button></div></div>);
-  if(screen==="ob_exercises"){const exLib=getExLib(curObDay);const curSel=obExs[curObDay]||[];const progress=50+((obExStep+1)/splitDays.length)*30;return(<div className="app"><style>{S}</style><div className="topbar"><button className="back-btn" onClick={()=>{obExStep>0?setObExStep(s=>s-1):setScreen("ob_split");}}>←</button><span style={{fontSize:12,fontWeight:600,color:"var(--ink3)"}}>{obExStep+1}/{splitDays.length}</span></div><div className="ob-prog"><div className="ob-track"><div className="ob-fill" style={{width:`${progress}%`}}/></div></div><div className="ob-pg"><div className="u0"><div className="ob-q">{curObDay} exercises.</div><div style={{fontSize:14,color:"var(--ink3)",marginTop:4}}>{curSel.length} selected</div></div><div className="ex-sel-list u1">{exLib.map(ex=>{const isOn=curSel.includes(ex);return(<div key={ex} className={`ex-opt${isOn?" on":""}`} onClick={()=>toggleObEx(curObDay,ex)}><div className="ex-opt-name" title={ex}>{ex}</div><div className="ex-opt-chk">✓</div></div>);})}</div><button className="btn-p u2" disabled={!curSel.length} onClick={()=>{if(isLastDay)setScreen("ob_auth");else setObExStep(i=>i+1);}}>{isLastDay?"Continue →":`Next — ${splitDays[obExStep+1]} →`}</button></div></div>);}
-
-  if(screen==="ob_auth")return(
-    <div className="app"><style>{S}</style>
-      <div className="topbar"><button className="back-btn" onClick={()=>setScreen("ob_exercises")}>←</button></div>
-      <div className="ob-prog"><div className="ob-track"><div className="ob-fill" style={{width:"95%"}}/></div></div>
-      <div style={{flex:1,display:"flex",flexDirection:"column",padding:"40px 24px 48px"}}>
-        <div style={{flex:1,display:"flex",flexDirection:"column",justifyContent:"center",gap:16}}>
-          <div className="u0">
-            <div style={{fontSize:32,fontWeight:900,letterSpacing:"-1px",color:"var(--ch)",marginBottom:8}}>Save your progress.</div>
-            <div style={{fontSize:16,color:"var(--ink3)",lineHeight:1.6}}>Sign in to back up your workouts to the cloud. Your data syncs across devices and is never lost.</div>
-          </div>
-          <div className="u1" style={{background:"var(--surface)",borderRadius:16,padding:"16px",display:"flex",gap:12,alignItems:"flex-start"}}>
-            <div style={{fontSize:24}}>☁️</div>
-            <div>
-              <div style={{fontSize:14,fontWeight:700,color:"var(--ch)",marginBottom:2}}>Cloud sync</div>
-              <div style={{fontSize:13,color:"var(--ink3)"}}>Your sessions, sets and weights saved permanently.</div>
-            </div>
-          </div>
-          <div className="u2" style={{background:"var(--surface)",borderRadius:16,padding:"16px",display:"flex",gap:12,alignItems:"flex-start"}}>
-            <div style={{fontSize:24}}>📱</div>
-            <div>
-              <div style={{fontSize:14,fontWeight:700,color:"var(--ch)",marginBottom:2}}>Any device</div>
-              <div style={{fontSize:13,color:"var(--ink3)"}}>Log on your phone, see your history anywhere.</div>
-            </div>
-          </div>
-        </div>
-        <div className="u3" style={{display:"flex",flexDirection:"column",gap:10}}>
-          <button className="google-btn" onClick={async()=>{await signInWithGoogle();}}>
-            {TI.google} Continue with Google
-          </button>
-          <button className="btn-o" onClick={addProgram}>Skip for now</button>
-          <div style={{textAlign:"center",fontSize:12,color:"var(--ink3)"}}>You can always sign in later from Profile</div>
+  if (authLoading) {
+    return (
+      <div className="app">
+        <style>{S}</style>
+        <div className="loading-screen">
+          <div className="spinner" />
+          <div className="loading-text">Loading Overload...</div>
         </div>
       </div>
-    </div>
-  );
+    )
+  }
 
+  /* ════ ONBOARDING ════ */
+  if (screen === 'splash')
+    return (
+      <div className="app">
+        <style>{S}</style>
+        <div className="splash">
+          <div className="splash-space" />
+          <div className="splash-bottom">
+            <div className="splash-title u0">
+              Track every lift.
+              <br />
+              Beat it next time.
+            </div>
+            <div className="splash-sub u1">The simplest progressive overload tracker.</div>
+            <button className="btn-p u2" onClick={() => setScreen('ob_info1')}>
+              Get Started
+            </button>
+            <button
+              className="btn-o u3"
+              onClick={async () => {
+                await signInWithGoogle()
+              }}
+            >
+              Already have an account
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  if (screen === 'ob_info1')
+    return (
+      <div className="app">
+        <style>{S}</style>
+        <div className="topbar">
+          <button className="back-btn" onClick={() => setScreen('splash')}>
+            ←
+          </button>
+        </div>
+        <div className="ob-prog">
+          <div className="ob-track">
+            <div className="ob-fill" style={{ width: '5%' }} />
+          </div>
+        </div>
+        <div className="ob-info-pg">
+          <div className="ob-info-top">
+            <div className="u0">
+              <div className="ob-q">What is progressive overload?</div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center' }} className="u1">
+              <div className="bar-visual">
+                {[{ h: 30 }, { h: 44 }, { h: 58 }, { h: 70 }, { h: 85 }].map((b, i) => (
+                  <div
+                    key={i}
+                    className={`bv-bar${i === 4 ? ' hi' : ''}`}
+                    style={{ width: 38, height: b.h }}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="ob-body u2">
+              If you lift <b>slightly more each week</b> — more weight, more reps, or more sets —
+              your muscles must keep adapting and growing.
+              <br />
+              <br />
+              It's the most proven principle in all of fitness.
+            </div>
+          </div>
+          <div className="ob-info-bottom">
+            <button className="btn-p u3" onClick={() => setScreen('ob_info2')}>
+              Next →
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  if (screen === 'ob_info2')
+    return (
+      <div className="app">
+        <style>{S}</style>
+        <div className="topbar">
+          <button className="back-btn" onClick={() => setScreen('ob_info1')}>
+            ←
+          </button>
+        </div>
+        <div className="ob-prog">
+          <div className="ob-track">
+            <div className="ob-fill" style={{ width: '12%' }} />
+          </div>
+        </div>
+        <div className="ob-info-pg">
+          <div className="ob-info-top">
+            <div className="u0">
+              <div className="ob-q">Why most people stop progressing.</div>
+            </div>
+            <div className="u1">
+              <div className="chart2">
+                {[
+                  { lbl: 'With tracking', pct: 85, color: 'var(--ch)' },
+                  { lbl: 'Without tracking', pct: 22, color: 'var(--ink4)' },
+                ].map((r, i) => (
+                  <div className="c2-row" key={i}>
+                    <div className="c2-lbl">{r.lbl}</div>
+                    <div className="c2-wrap">
+                      <div className="c2-bar" style={{ width: `${r.pct}%`, background: r.color }} />
+                    </div>
+                    <div className="c2-val" style={{ color: r.color }}>
+                      {r.pct}%
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="ob-body u2">
+              They train hard but <b>never write anything down.</b> Every session they're guessing
+              the weight. Without a reference point, there's no overload.
+            </div>
+          </div>
+          <div className="ob-info-bottom">
+            <button className="btn-p u3" onClick={() => setScreen('ob_bridge')}>
+              Next →
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  if (screen === 'ob_bridge')
+    return (
+      <div className="app">
+        <style>{S}</style>
+        <div className="topbar">
+          <button className="back-btn" onClick={() => setScreen('ob_info2')}>
+            ←
+          </button>
+        </div>
+        <div className="ob-prog">
+          <div className="ob-track">
+            <div className="ob-fill" style={{ width: '20%' }} />
+          </div>
+        </div>
+        <div className="bridge-pg">
+          <div className="u0">
+            <div className="bridge-title">
+              Now let's build
+              <br />
+              your program.
+            </div>
+            <div className="bridge-sub">
+              Takes 60 seconds. Set up your split and exercises so you're ready to start tracking
+              today.
+            </div>
+          </div>
+          <button className="btn-p u1" onClick={() => setScreen('ob_freq')}>
+            Let's go →
+          </button>
+        </div>
+      </div>
+    )
+  if (screen === 'ob_freq')
+    return (
+      <div className="app">
+        <style>{S}</style>
+        <div className="topbar">
+          <button className="back-btn" onClick={() => setScreen('ob_bridge')}>
+            ←
+          </button>
+        </div>
+        <div className="ob-prog">
+          <div className="ob-track">
+            <div className="ob-fill" style={{ width: '32%' }} />
+          </div>
+        </div>
+        <div className="ob-pg">
+          <div className="u0">
+            <div className="ob-q">
+              How often do
+              <br />
+              you train?
+            </div>
+          </div>
+          <div className="freq-list u1">
+            {FREQ_OPTS.map((f) => (
+              <div
+                key={f.id}
+                className={`freq-opt${obFreq === f.id ? ' on' : ''}`}
+                onClick={() => setObFreq(f.id)}
+              >
+                <div className="freq-dots">
+                  {Array.from({ length: f.dots }, (_, i) => (
+                    <div key={i} className="freq-dot" />
+                  ))}
+                </div>
+                <div>
+                  <div className="freq-title">{f.label}</div>
+                  <div className="freq-sub">{f.sub}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <button className="btn-p u2" disabled={!obFreq} onClick={() => setScreen('ob_split')}>
+            Continue
+          </button>
+        </div>
+      </div>
+    )
+  if (screen === 'ob_split')
+    return (
+      <div className="app">
+        <style>{S}</style>
+        <div className="topbar">
+          <button
+            className="back-btn"
+            onClick={() => setScreen(programs.length > 0 ? 'main' : 'ob_freq')}
+          >
+            ←
+          </button>
+        </div>
+        <div className="ob-prog">
+          <div className="ob-track">
+            <div className="ob-fill" style={{ width: '50%' }} />
+          </div>
+        </div>
+        <div className="ob-pg">
+          <div className="u0">
+            <div className="ob-q">Pick your split.</div>
+            <div style={{ fontSize: 14, color: 'var(--ink3)', marginTop: 4 }}>All splits shown</div>
+          </div>
+          <div className="split-list u1">
+            {ALL_SPLITS.map((s) => (
+              <div
+                key={s.id}
+                className={`split-opt${obSplit?.id === s.id ? ' on' : ''}`}
+                onClick={() => {
+                  setObSplit(s)
+                  setObExs({})
+                  setObExStep(0)
+                }}
+              >
+                <div className="split-emoji">{s.emoji}</div>
+                <div style={{ flex: 1 }}>
+                  <div className="split-name">{s.name}</div>
+                  <div className="split-desc">{s.desc}</div>
+                </div>
+                <div className="split-chk">✓</div>
+              </div>
+            ))}
+          </div>
+          <button
+            className="btn-p u2"
+            disabled={!obSplit}
+            onClick={() => setScreen('ob_exercises')}
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    )
+  if (screen === 'ob_exercises') {
+    const exLib = getExLib(curObDay)
+    const curSel = obExs[curObDay] || []
+    const progress = 50 + ((obExStep + 1) / splitDays.length) * 30
+    return (
+      <div className="app">
+        <style>{S}</style>
+        <div className="topbar">
+          <button
+            className="back-btn"
+            onClick={() => {
+              obExStep > 0 ? setObExStep((s) => s - 1) : setScreen('ob_split')
+            }}
+          >
+            ←
+          </button>
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink3)' }}>
+            {obExStep + 1}/{splitDays.length}
+          </span>
+        </div>
+        <div className="ob-prog">
+          <div className="ob-track">
+            <div className="ob-fill" style={{ width: `${progress}%` }} />
+          </div>
+        </div>
+        <div className="ob-pg">
+          <div className="u0">
+            <div className="ob-q">{curObDay} exercises.</div>
+            <div style={{ fontSize: 14, color: 'var(--ink3)', marginTop: 4 }}>
+              {curSel.length} selected
+            </div>
+          </div>
+          <div className="ex-sel-list u1">
+            {exLib.map((ex) => {
+              const isOn = curSel.includes(ex)
+              return (
+                <div
+                  key={ex}
+                  className={`ex-opt${isOn ? ' on' : ''}`}
+                  onClick={() => toggleObEx(curObDay, ex)}
+                >
+                  <div className="ex-opt-name" title={ex}>
+                    {ex}
+                  </div>
+                  <div className="ex-opt-chk">✓</div>
+                </div>
+              )
+            })}
+          </div>
+          <button
+            className="btn-p u2"
+            disabled={!curSel.length}
+            onClick={() => {
+              if (isLastDay) setScreen('ob_auth')
+              else setObExStep((i) => i + 1)
+            }}
+          >
+            {isLastDay ? 'Continue →' : `Next — ${splitDays[obExStep + 1]} →`}
+          </button>
+        </div>
+      </div>
+    )
+  }
 
+  if (screen === 'ob_auth')
+    return (
+      <div className="app">
+        <style>{S}</style>
+        <div className="topbar">
+          <button className="back-btn" onClick={() => setScreen('ob_exercises')}>
+            ←
+          </button>
+        </div>
+        <div className="ob-prog">
+          <div className="ob-track">
+            <div className="ob-fill" style={{ width: '95%' }} />
+          </div>
+        </div>
+        <div
+          style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '40px 24px 48px' }}
+        >
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              gap: 16,
+            }}
+          >
+            <div className="u0">
+              <div
+                style={{
+                  fontSize: 32,
+                  fontWeight: 900,
+                  letterSpacing: '-1px',
+                  color: 'var(--ch)',
+                  marginBottom: 8,
+                }}
+              >
+                Save your progress.
+              </div>
+              <div style={{ fontSize: 16, color: 'var(--ink3)', lineHeight: 1.6 }}>
+                Sign in to back up your workouts to the cloud. Your data syncs across devices and is
+                never lost.
+              </div>
+            </div>
+            <div
+              className="u1"
+              style={{
+                background: 'var(--surface)',
+                borderRadius: 16,
+                padding: '16px',
+                display: 'flex',
+                gap: 12,
+                alignItems: 'flex-start',
+              }}
+            >
+              <div style={{ fontSize: 24 }}>☁️</div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ch)', marginBottom: 2 }}>
+                  Cloud sync
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--ink3)' }}>
+                  Your sessions, sets and weights saved permanently.
+                </div>
+              </div>
+            </div>
+            <div
+              className="u2"
+              style={{
+                background: 'var(--surface)',
+                borderRadius: 16,
+                padding: '16px',
+                display: 'flex',
+                gap: 12,
+                alignItems: 'flex-start',
+              }}
+            >
+              <div style={{ fontSize: 24 }}>📱</div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ch)', marginBottom: 2 }}>
+                  Any device
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--ink3)' }}>
+                  Log on your phone, see your history anywhere.
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="u3" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <button
+              className="google-btn"
+              onClick={async () => {
+                await signInWithGoogle()
+              }}
+            >
+              {TI.google} Continue with Google
+            </button>
+            <button className="btn-o" onClick={addProgram}>
+              Skip for now
+            </button>
+            <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--ink3)' }}>
+              You can always sign in later from Profile
+            </div>
+          </div>
+        </div>
+      </div>
+    )
 
   /* ════ SESSION SCREEN ════ */
-  if(sessionScreen!==null){
-    const dayName=sessionScreen;
-    const exNames=getDayExs(dayName);
-    const isEdit=editingDay===dayName;
-    const {tot,done}=getSessSetCounts(dayName);
-    const pct=tot>0?Math.round(done/tot*100):0;
-    const hasAnyDone=anyDone(dayName);
-    const quickAdds=getExLib(dayName).filter(e=>!exNames.includes(e)).slice(0,6);
+  if (sessionScreen !== null) {
+    const dayName = sessionScreen
+    const exNames = getDayExs(dayName)
+    const isEdit = editingDay === dayName
+    const { tot, done } = getSessSetCounts(dayName)
+    const pct = tot > 0 ? Math.round((done / tot) * 100) : 0
+    const hasAnyDone = anyDone(dayName)
+    const quickAdds = getExLib(dayName)
+      .filter((e) => !exNames.includes(e))
+      .slice(0, 6)
     const getLastForEx = (exName, excludeId, log) => {
       for (const s of log) {
-        if (s.id === excludeId) continue;
-        const exData = s.exercises.find(e => e.name === exName);
+        if (s.id === excludeId) continue
+        const exData = s.exercises.find((e) => e.name === exName)
         if (exData && exData.sets.length) {
-          const best = exData.sets.reduce((a,b)=>(parseFloat(b.w)||0)>(parseFloat(a.w)||0)?b:a, exData.sets[0]);
-          return { w: best.w, r: best.r };
+          const best = exData.sets.reduce(
+            (a, b) => ((parseFloat(b.w) || 0) > (parseFloat(a.w) || 0) ? b : a),
+            exData.sets[0],
+          )
+          return { w: best.w, r: best.r }
         }
       }
-      return null;
-    };
+      return null
+    }
     const handleReset = async () => {
-      const todayKey = localDateStr(Date.now());
-      const completedToday = sessionLog.find(s => s.dayName===dayName && localDateStr(s.date)===todayKey);
+      const todayKey = localDateStr(Date.now())
+      const completedToday = sessionLog.find(
+        (s) => s.dayName === dayName && localDateStr(s.date) === todayKey,
+      )
       if (completedToday) {
         // A session was already saved for today — actually clear it, not just the on-screen taps
         if (user) {
-          const {error} = await deleteSession(completedToday.id);
-          if (error) { showToast("Couldn't reset — try again"); return; }
+          const { error } = await deleteSession(completedToday.id)
+          if (error) {
+            showToast("Couldn't reset — try again")
+            return
+          }
         }
-        const remainingLog = sessionLog.filter(s => s.id !== completedToday.id);
-        if (!user) setSessionLog(remainingLog);
-        const freshWSets = {};
-        exNames.forEach(ex => {
-          const last = getLastForEx(ex, completedToday.id, remainingLog);
-          freshWSets[ex] = [{w:"",r:"",done:false,lastW:last?last.w:"—",lastR:last?last.r:"—",typed:false}];
-        });
-        if (user) { for (const ex of exNames) await saveWorkoutState(ex, freshWSets[ex]); }
-        else setWSets(p => ({...p, ...freshWSets}));
+        const remainingLog = sessionLog.filter((s) => s.id !== completedToday.id)
+        if (!user) setSessionLog(remainingLog)
+        const freshWSets = {}
+        exNames.forEach((ex) => {
+          const last = getLastForEx(ex, completedToday.id, remainingLog)
+          freshWSets[ex] = [
+            {
+              w: '',
+              r: '',
+              done: false,
+              lastW: last ? last.w : '—',
+              lastR: last ? last.r : '—',
+              typed: false,
+            },
+          ]
+        })
+        if (user) {
+          for (const ex of exNames) await saveWorkoutState(ex, freshWSets[ex])
+        } else setWSets((p) => ({ ...p, ...freshWSets }))
       } else {
         // Nothing saved yet — just clear the unsaved taps on screen
-        setWSets(p=>{const next={...p};exNames.forEach(ex=>{next[ex]=(p[ex]||[]).map(s=>({...s,done:false,typed:false,w:s.lastW!=="—"?s.lastW:"",r:s.lastR!=="—"?s.lastR:""}));});return next;});
+        setWSets((p) => {
+          const next = { ...p }
+          exNames.forEach((ex) => {
+            next[ex] = (p[ex] || []).map((s) => ({
+              ...s,
+              done: false,
+              typed: false,
+              w: s.lastW !== '—' ? s.lastW : '',
+              r: s.lastR !== '—' ? s.lastR : '',
+            }))
+          })
+          return next
+        })
       }
-      setCollapsedDone({});
-      showToast(`${dayName} reset`);
-    };
-    return(
-      <div className="app"><style>{S}</style>
-        {toast&&<div className="toast">{toast}</div>}
+      setCollapsedDone({})
+      showToast(`${dayName} reset`)
+    }
+    return (
+      <div className="app">
+        <style>{S}</style>
+        {toast && <div className="toast">{toast}</div>}
         <div className="sess-screen">
           <div className="sess-topbar">
-            <button className="back-btn" onClick={()=>{setSessionScreen(null);setEditDay(null);setCollapsedDone({});}}>←</button>
+            <button
+              className="back-btn"
+              onClick={() => {
+                setSessionScreen(null)
+                setEditDay(null)
+                setCollapsedDone({})
+              }}
+            >
+              ←
+            </button>
             <div className="sess-title">{dayName}</div>
-            <button className="back-btn" onClick={()=>setEditDay(isEdit?null:dayName)} style={{fontSize:16,background:isEdit?"var(--ch)":"var(--surface)",color:isEdit?"white":"var(--ink)"}}>✏️</button>
+            <button
+              className="back-btn"
+              onClick={() => setEditDay(isEdit ? null : dayName)}
+              style={{
+                fontSize: 16,
+                background: isEdit ? 'var(--ch)' : 'var(--surface)',
+                color: isEdit ? 'white' : 'var(--ink)',
+              }}
+            >
+              ✏️
+            </button>
           </div>
           <div className="sess-counter">
-            <div className="sess-count-row"><span className="sess-count-num">{done} / {tot}</span><span className="sess-count-total">sets</span></div>
-            <div className="sess-prog-bar-wrap"><div className="sess-prog-bar" style={{width:`${pct}%`,background:pct===100?"var(--green)":"var(--orange)"}}/></div>
+            <div className="sess-count-row">
+              <span className="sess-count-num">
+                {done} / {tot}
+              </span>
+              <span className="sess-count-total">sets</span>
+            </div>
+            <div className="sess-prog-bar-wrap">
+              <div
+                className="sess-prog-bar"
+                style={{
+                  width: `${pct}%`,
+                  background: pct === 100 ? 'var(--green)' : 'var(--orange)',
+                }}
+              />
+            </div>
           </div>
-          <div className="sess-divider"/>
+          <div className="sess-divider" />
           <div className="sess-scroll">
-            {isEdit?(
+            {isEdit ? (
               <div className="edit-mode">
-                <div className="lbl" style={{marginBottom:10}}>Edit {dayName}</div>
-                {exNames.length===0&&<div style={{fontSize:13,color:"var(--ink3)",padding:"8px 0"}}>No exercises. Add some below.</div>}
-                {exNames.map(ex=><div className="edit-ex-row" key={ex}><div className="edit-ex-name" title={ex}>{ex}</div><button className="rm-btn" onClick={()=>removeExFromDay(dayName,ex)}>✕</button></div>)}
-                <div className="edit-add-row"><input className="edit-inp" placeholder="Search or type exercise…" value={editSearch} onChange={e=>setEditS(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addExToDay(dayName,editSearch)}/><button className="edit-add-plus" onClick={()=>addExToDay(dayName,editSearch)}>+</button></div>
-                {quickAdds.length>0&&<div className="qa-row">{quickAdds.map(s=><div key={s} className="qa" onClick={()=>addExToDay(dayName,s)} title={s}>+ {s.length>14?s.slice(0,12)+"…":s}</div>)}</div>}
-                <button className="delete-workout-btn" onClick={()=>handleDeleteWorkout(dayName)}>🗑 Remove {dayName} workout</button>
-              </div>
-            ):(
-              exNames.length===0?(
-                <div style={{padding:"40px 20px",textAlign:"center"}}><div style={{fontSize:32,marginBottom:8}}>🏋️</div><div style={{fontSize:14,color:"var(--ink3)"}}>No exercises yet.<br/>Tap Edit to add some.</div></div>
-              ):(
-                exNames.map(ex=>{
-                  const sets=wSets[ex]||[];const exDone=isExDone(ex);const isCollapsed=collapsedDone[ex]&&exDone;const muscleTag=MUSCLE_TAGS[ex];const bestStr=getBestSet(ex);
-                  if(isCollapsed)return(<div key={ex} className="ex-block"><div className="ex-done-row" onClick={()=>setCollapsedDone(p=>({...p,[ex]:false}))}><div className="ex-done-tick">✓</div><div className="ex-done-name" title={ex}>{ex}</div>{bestStr&&<div className="ex-done-detail">{bestStr}</div>}</div></div>);
-                  return(
-                    <div key={ex} className="ex-block">
-                      <div className="ex-hdr"><div className="ex-hdr-left"><div className="ex-name" title={ex}>{ex}</div>{muscleTag&&<span className="muscle-tag">{muscleTag}</span>}</div><div className="ex-last-lbl">Last</div></div>
-                      {sets.length>0&&<div className="set-col-hdrs"><div className="sch">Set</div><div className="sch">Last</div><div className="sch">{units}</div><div className="sch">Reps</div><div className="sch"/></div>}
-                      {sets.map((s,si)=>{const prW=isPR(ex,si,s.w,s.typed);return(
-                        <div className="set-row" key={si}>
-                          <div className="set-n">Set {si+1}</div>
-                          <div className="set-last-num">{s.lastW!=="—"?`${s.lastW}×${s.lastR}`:"—"}</div>
-                          <input className={`set-inp${prW?" pr":""}`} placeholder="0" value={s.w} onChange={e=>updateSet(ex,si,"w",e.target.value)} onFocus={e=>{if(!s.typed&&s.w)e.target.select();}} inputMode="decimal"/>
-                          <input className="set-inp" placeholder="—" value={s.r} onChange={e=>updateSet(ex,si,"r",e.target.value)} onFocus={e=>{if(!s.typed&&s.r)e.target.select();}} inputMode="numeric"/>
-                          <div className={`set-tick${s.done?" on":""}`} onClick={()=>tickSet(ex,si)}>✓</div>
-                        </div>
-                      );})}
-                      <div className="ex-footer"><button className="add-set-btn" onClick={()=>addSet(ex)}>＋ Add Set</button>{sets.length>1&&<button className="rm-set-btn" onClick={()=>removeSet(ex,sets.length-1)}>− Remove Set</button>}</div>
+                <div className="lbl" style={{ marginBottom: 10 }}>
+                  Edit {dayName}
+                </div>
+                {exNames.length === 0 && (
+                  <div style={{ fontSize: 13, color: 'var(--ink3)', padding: '8px 0' }}>
+                    No exercises. Add some below.
+                  </div>
+                )}
+                {exNames.map((ex) => (
+                  <div className="edit-ex-row" key={ex}>
+                    <div className="edit-ex-name" title={ex}>
+                      {ex}
                     </div>
-                  );
-                })
-              )
+                    <button className="rm-btn" onClick={() => removeExFromDay(dayName, ex)}>
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <div className="edit-add-row">
+                  <input
+                    className="edit-inp"
+                    placeholder="Search or type exercise…"
+                    value={editSearch}
+                    onChange={(e) => setEditS(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && addExToDay(dayName, editSearch)}
+                  />
+                  <button className="edit-add-plus" onClick={() => addExToDay(dayName, editSearch)}>
+                    +
+                  </button>
+                </div>
+                {quickAdds.length > 0 && (
+                  <div className="qa-row">
+                    {quickAdds.map((s) => (
+                      <div key={s} className="qa" onClick={() => addExToDay(dayName, s)} title={s}>
+                        + {s.length > 14 ? s.slice(0, 12) + '…' : s}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <button className="delete-workout-btn" onClick={() => handleDeleteWorkout(dayName)}>
+                  🗑 Remove {dayName} workout
+                </button>
+              </div>
+            ) : exNames.length === 0 ? (
+              <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>🏋️</div>
+                <div style={{ fontSize: 14, color: 'var(--ink3)' }}>
+                  No exercises yet.
+                  <br />
+                  Tap Edit to add some.
+                </div>
+              </div>
+            ) : (
+              exNames.map((ex) => {
+                const sets = wSets[ex] || []
+                const exDone = isExDone(ex)
+                const isCollapsed = collapsedDone[ex] && exDone
+                const muscleTag = MUSCLE_TAGS[ex]
+                const bestStr = getBestSet(ex)
+                if (isCollapsed)
+                  return (
+                    <div key={ex} className="ex-block">
+                      <div
+                        className="ex-done-row"
+                        onClick={() => setCollapsedDone((p) => ({ ...p, [ex]: false }))}
+                      >
+                        <div className="ex-done-tick">✓</div>
+                        <div className="ex-done-name" title={ex}>
+                          {ex}
+                        </div>
+                        {bestStr && <div className="ex-done-detail">{bestStr}</div>}
+                      </div>
+                    </div>
+                  )
+                return (
+                  <div key={ex} className="ex-block">
+                    <div className="ex-hdr">
+                      <div className="ex-hdr-left">
+                        <div className="ex-name" title={ex}>
+                          {ex}
+                        </div>
+                        {muscleTag && <span className="muscle-tag">{muscleTag}</span>}
+                      </div>
+                      <div className="ex-last-lbl">Last</div>
+                    </div>
+                    {sets.length > 0 && (
+                      <div className="set-col-hdrs">
+                        <div className="sch">Set</div>
+                        <div className="sch">Last</div>
+                        <div className="sch">{units}</div>
+                        <div className="sch">Reps</div>
+                        <div className="sch" />
+                      </div>
+                    )}
+                    {sets.map((s, si) => {
+                      const prW = isPR(ex, si, s.w, s.typed)
+                      return (
+                        <div className="set-row" key={si}>
+                          <div className="set-n">Set {si + 1}</div>
+                          <div className="set-last-num">
+                            {s.lastW !== '—' ? `${s.lastW}×${s.lastR}` : '—'}
+                          </div>
+                          <input
+                            className={`set-inp${prW ? ' pr' : ''}`}
+                            placeholder="0"
+                            value={s.w}
+                            onChange={(e) => updateSet(ex, si, 'w', e.target.value)}
+                            onFocus={(e) => {
+                              if (!s.typed && s.w) e.target.select()
+                            }}
+                            inputMode="decimal"
+                          />
+                          <input
+                            className="set-inp"
+                            placeholder="—"
+                            value={s.r}
+                            onChange={(e) => updateSet(ex, si, 'r', e.target.value)}
+                            onFocus={(e) => {
+                              if (!s.typed && s.r) e.target.select()
+                            }}
+                            inputMode="numeric"
+                          />
+                          <div
+                            className={`set-tick${s.done ? ' on' : ''}`}
+                            onClick={() => tickSet(ex, si)}
+                          >
+                            ✓
+                          </div>
+                        </div>
+                      )
+                    })}
+                    <div className="ex-footer">
+                      <button className="add-set-btn" onClick={() => addSet(ex)}>
+                        ＋ Add Set
+                      </button>
+                      {sets.length > 1 && (
+                        <button
+                          className="rm-set-btn"
+                          onClick={() => removeSet(ex, sets.length - 1)}
+                        >
+                          − Remove Set
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })
             )}
           </div>
           <div className="sess-footer">
-            {!isEdit&&<button className="sess-edit-btn" onClick={handleReset}>Reset</button>}
-            {isEdit&&<button className="sess-edit-btn active" onClick={()=>setEditDay(null)}>✓ Done</button>}
-            {!isEdit&&<button className="sess-finish-btn" disabled={!hasAnyDone} onClick={()=>{doFinish(dayName);setSessionScreen(null);setCollapsedDone({});}}>Finish</button>}
+            {!isEdit && (
+              <button className="sess-edit-btn" onClick={handleReset}>
+                Reset
+              </button>
+            )}
+            {isEdit && (
+              <button className="sess-edit-btn active" onClick={() => setEditDay(null)}>
+                ✓ Done
+              </button>
+            )}
+            {!isEdit && (
+              <button
+                className="sess-finish-btn"
+                disabled={!hasAnyDone}
+                onClick={() => {
+                  doFinish(dayName)
+                  setSessionScreen(null)
+                  setCollapsedDone({})
+                }}
+              >
+                Finish
+              </button>
+            )}
           </div>
         </div>
       </div>
-    );
+    )
   }
 
   /* ════ MAIN APP ════ */
-  return(
-    <div className="app"><style>{S}</style>
-      {toast&&<div className="toast">{toast}</div>}
+  return (
+    <div className="app">
+      <style>{S}</style>
+      {toast && <div className="toast">{toast}</div>}
       <div className="topbar">
-        <div className="brand">{tab==="home"?"Overload":tab==="progress"?"Progress":"Profile"}</div>
+        <div className="brand">
+          {tab === 'home' ? 'Overload' : tab === 'progress' ? 'Progress' : 'Profile'}
+        </div>
       </div>
 
       {/* HOME */}
-      {tab==="home"&&(
+      {tab === 'home' && (
         <div className="home-scroll">
           <div className="ws-days u0">
-            {DAYS_MON.map((_,i)=>{
-              const isToday=i===todayMonIdx;const isViewing=viewingDayIdx===i;
-              const done=isDayDone(i);const sessLabel=getDaySessionLabel(i);
-              const trainedSess=(trainedDays[i]||[])[0];
-              const todaySessEntry=trainedSess?sessionLog.find(s=>s.dayName===trainedSess&&localDateStr(s.date)===localDateStr(today.getTime()-(todayMonIdx-i)*86400000)):null;
-              const isPartialDay=done&&todaySessEntry?.partial;
-              const partialPct=isPartialDay?getSessPct(trainedSess):100;
-              const showCard=isToday||isViewing;
-              const dateColor=done?(isPartialDay?"var(--orange)":"var(--green)"):isViewing?"var(--orange)":"var(--ink3)";
-              const dateFw=isToday||done?700:600;
-              return(
-                <div key={i} className="ws-day" onClick={()=>{if(i<=todayMonIdx){setViewingDayIdx(i===todayMonIdx?null:i);}}}
-                  style={{background:showCard?"var(--white)":"transparent",borderRadius:14,padding:"6px 2px",boxShadow:showCard?"var(--sh)":"none",transition:"all .2s"}}>
-                  <div className="ws-day-name" style={{color:showCard?"var(--ch)":"var(--ink3)",fontWeight:showCard?700:600}}>{DAYS_MON[i]}</div>
+            {DAYS_MON.map((_, i) => {
+              const isToday = i === todayMonIdx
+              const isViewing = viewingDayIdx === i
+              const done = isDayDone(i)
+              const sessLabel = getDaySessionLabel(i)
+              const trainedSess = (trainedDays[i] || [])[0]
+              const todaySessEntry = trainedSess
+                ? sessionLog.find(
+                    (s) =>
+                      s.dayName === trainedSess &&
+                      localDateStr(s.date) ===
+                        localDateStr(today.getTime() - (todayMonIdx - i) * 86400000),
+                  )
+                : null
+              const isPartialDay = done && todaySessEntry?.partial
+              const partialPct = isPartialDay ? getSessPct(trainedSess) : 100
+              const showCard = isToday || isViewing
+              const dateColor = done
+                ? isPartialDay
+                  ? 'var(--orange)'
+                  : 'var(--green)'
+                : isViewing
+                  ? 'var(--orange)'
+                  : 'var(--ink3)'
+              const dateFw = isToday || done ? 700 : 600
+              return (
+                <div
+                  key={i}
+                  className="ws-day"
+                  onClick={() => {
+                    if (i <= todayMonIdx) {
+                      setViewingDayIdx(i === todayMonIdx ? null : i)
+                    }
+                  }}
+                  style={{
+                    background: showCard ? 'var(--white)' : 'transparent',
+                    borderRadius: 14,
+                    padding: '6px 2px',
+                    boxShadow: showCard ? 'var(--sh)' : 'none',
+                    transition: 'all .2s',
+                  }}
+                >
+                  <div
+                    className="ws-day-name"
+                    style={{
+                      color: showCard ? 'var(--ch)' : 'var(--ink3)',
+                      fontWeight: showCard ? 700 : 600,
+                    }}
+                  >
+                    {DAYS_MON[i]}
+                  </div>
                   <div className="ws-ring-wrap">
                     <svg className="ws-ring-svg" viewBox="0 0 38 38">
-                      <circle cx="19" cy="19" r="16" fill="none" stroke="#D0D0D0" strokeWidth="1.5" strokeDasharray="4 3"/>
-                      {done&&!isPartialDay&&<circle cx="19" cy="19" r="16" fill="rgba(45,122,58,.07)" stroke="var(--green)" strokeWidth="3"/>}
-                      {done&&isPartialDay&&<circle cx="19" cy="19" r="16" fill="none" stroke="var(--orange)" strokeWidth="3" strokeDasharray={`${(partialPct/100)*CIRC} ${CIRC}`} style={{transform:"rotate(-90deg)",transformOrigin:"19px 19px"}}/>}
-                      {done&&isPartialDay&&<circle cx="19" cy="19" r="14" fill="var(--white)"/>}
+                      <circle
+                        cx="19"
+                        cy="19"
+                        r="16"
+                        fill="none"
+                        stroke="#D0D0D0"
+                        strokeWidth="1.5"
+                        strokeDasharray="4 3"
+                      />
+                      {done && !isPartialDay && (
+                        <circle
+                          cx="19"
+                          cy="19"
+                          r="16"
+                          fill="rgba(45,122,58,.07)"
+                          stroke="var(--green)"
+                          strokeWidth="3"
+                        />
+                      )}
+                      {done && isPartialDay && (
+                        <circle
+                          cx="19"
+                          cy="19"
+                          r="16"
+                          fill="none"
+                          stroke="var(--orange)"
+                          strokeWidth="3"
+                          strokeDasharray={`${(partialPct / 100) * CIRC} ${CIRC}`}
+                          style={{ transform: 'rotate(-90deg)', transformOrigin: '19px 19px' }}
+                        />
+                      )}
+                      {done && isPartialDay && (
+                        <circle cx="19" cy="19" r="14" fill="var(--white)" />
+                      )}
                     </svg>
-                    <div className="ws-ring-inner"><span className="ws-date-num" style={{color:dateColor,fontWeight:dateFw}}>{String(weekDates[i]).padStart(2,"0")}</span></div>
+                    <div className="ws-ring-inner">
+                      <span
+                        className="ws-date-num"
+                        style={{ color: dateColor, fontWeight: dateFw }}
+                      >
+                        {String(weekDates[i]).padStart(2, '0')}
+                      </span>
+                    </div>
                   </div>
-                  <div className="ws-sess-lbl" style={{color:done?(isPartialDay?"var(--orange)":"var(--green)"):"transparent",fontWeight:700}}>{sessLabel||"‎"}</div>
+                  <div
+                    className="ws-sess-lbl"
+                    style={{
+                      color: done
+                        ? isPartialDay
+                          ? 'var(--orange)'
+                          : 'var(--green)'
+                        : 'transparent',
+                      fontWeight: 700,
+                    }}
+                  >
+                    {sessLabel || '‎'}
+                  </div>
                 </div>
-              );
+              )
             })}
           </div>
-          {isViewingPast&&(<div className="past-day-banner u1"><div className="pdb-text">📅 Viewing past day</div><button className="pdb-back" onClick={()=>setViewingDayIdx(null)}>Back to today</button></div>)}
-          {!isViewingPast&&allDays.length>0&&<CtxLine text={ctxText} orange={ctxOrange}/>}
-          {allDays.length===0?(
-            <div className="empty-state u1"><div className="empty-state-icon">🏋️</div><div className="empty-state-text">No workouts yet.<br/>Add one below to start tracking.</div></div>
-          ):(
-            <div className="u1" style={{display:"flex",flexDirection:"column",gap:8}}>
-              {allDays.map(dayName=>{
-                const exNames=getDayExs(dayName);
-                const viewIdx=viewingDayIdx!==null?viewingDayIdx:todayMonIdx;
-                const isDoneToday=(trainedDays[viewIdx]||[]).includes(dayName);
-                const todaySess=isDoneToday?sessionLog.find(s=>s.dayName===dayName&&localDateStr(s.date)===localDateStr(today.getTime()-(todayMonIdx-viewIdx)*86400000)):null;
-                const isPartialToday=isDoneToday&&todaySess?.partial;
-                const isFullToday=isDoneToday&&!isPartialToday;
-                const pct=isDoneToday?getSessPct(dayName):0;
-                const {tot,done}=getSessSetCounts(dayName);
-                const inProgress=done>0&&!isDoneToday;
-                const remaining=exNames.filter(ex=>(wSets[ex]||[]).every(s=>!s.done)).length;
-                const barPct=isDoneToday?pct:tot>0?Math.round(done/tot*100):0;
-                const showBar=barPct>0;
-                const barColor=isFullToday?"var(--green)":"var(--orange)";
-                const subtitle=exNames.slice(0,3).join(" · ")+(exNames.length>3?" …":"");
-                return(
-                  <div key={dayName} className="day-card" onClick={()=>setSessionScreen(dayName)}>
+          {isViewingPast && (
+            <div className="past-day-banner u1">
+              <div className="pdb-text">📅 Viewing past day</div>
+              <button className="pdb-back" onClick={() => setViewingDayIdx(null)}>
+                Back to today
+              </button>
+            </div>
+          )}
+          {!isViewingPast && allDays.length > 0 && <CtxLine text={ctxText} orange={ctxOrange} />}
+          {allDays.length === 0 ? (
+            <div className="empty-state u1">
+              <div className="empty-state-icon">🏋️</div>
+              <div className="empty-state-text">
+                No workouts yet.
+                <br />
+                Add one below to start tracking.
+              </div>
+            </div>
+          ) : (
+            <div className="u1" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {allDays.map((dayName) => {
+                const exNames = getDayExs(dayName)
+                const viewIdx = viewingDayIdx !== null ? viewingDayIdx : todayMonIdx
+                const isDoneToday = (trainedDays[viewIdx] || []).includes(dayName)
+                const todaySess = isDoneToday
+                  ? sessionLog.find(
+                      (s) =>
+                        s.dayName === dayName &&
+                        localDateStr(s.date) ===
+                          localDateStr(today.getTime() - (todayMonIdx - viewIdx) * 86400000),
+                    )
+                  : null
+                const isPartialToday = isDoneToday && todaySess?.partial
+                const isFullToday = isDoneToday && !isPartialToday
+                const pct = isDoneToday ? getSessPct(dayName) : 0
+                const { tot, done } = getSessSetCounts(dayName)
+                const inProgress = done > 0 && !isDoneToday
+                const remaining = exNames.filter((ex) =>
+                  (wSets[ex] || []).every((s) => !s.done),
+                ).length
+                const barPct = isDoneToday ? pct : tot > 0 ? Math.round((done / tot) * 100) : 0
+                const showBar = barPct > 0
+                const barColor = isFullToday ? 'var(--green)' : 'var(--orange)'
+                const subtitle = exNames.slice(0, 3).join(' · ') + (exNames.length > 3 ? ' …' : '')
+                return (
+                  <div key={dayName} className="day-card" onClick={() => setSessionScreen(dayName)}>
                     <div className="day-card-body">
                       <div className="dc-top">
                         <div className="dc-left">
-                          <span className={`dc-name${isFullToday?" green":""}`}>{dayName}</span>
-                          {isFullToday&&<span className="dc-pill-done">✓ Done</span>}
-                          {isPartialToday&&<span style={{background:"var(--orange-l)",color:"var(--orange)",border:"1px solid var(--orange-m)",borderRadius:20,padding:"2px 9px",fontSize:11,fontWeight:600,whiteSpace:"nowrap",flexShrink:0}}>{pct}%</span>}
+                          <span className={`dc-name${isFullToday ? ' green' : ''}`}>{dayName}</span>
+                          {isFullToday && <span className="dc-pill-done">✓ Done</span>}
+                          {isPartialToday && (
+                            <span
+                              style={{
+                                background: 'var(--orange-l)',
+                                color: 'var(--orange)',
+                                border: '1px solid var(--orange-m)',
+                                borderRadius: 20,
+                                padding: '2px 9px',
+                                fontSize: 11,
+                                fontWeight: 600,
+                                whiteSpace: 'nowrap',
+                                flexShrink: 0,
+                              }}
+                            >
+                              {pct}%
+                            </span>
+                          )}
                         </div>
                         <div className="dc-right">
-                          {inProgress&&remaining>0&&<span className="dc-remaining">{remaining} remaining</span>}
-                          {!inProgress&&!isPartialToday&&<span className="dc-last">{getLastTrained(dayName)}</span>}
-                          <div style={{color:"var(--ink3)",display:"flex"}}>{TI.chevron}</div>
+                          {inProgress && remaining > 0 && (
+                            <span className="dc-remaining">{remaining} remaining</span>
+                          )}
+                          {!inProgress && !isPartialToday && (
+                            <span className="dc-last">{getLastTrained(dayName)}</span>
+                          )}
+                          <div style={{ color: 'var(--ink3)', display: 'flex' }}>{TI.chevron}</div>
                         </div>
                       </div>
-                      {exNames.length>0&&<div className="dc-subtitle">{subtitle}</div>}
+                      {exNames.length > 0 && <div className="dc-subtitle">{subtitle}</div>}
                     </div>
-                    {showBar&&<div className="dc-bar-wrap"><div className="dc-bar" style={{width:`${barPct}%`,background:barColor}}/></div>}
+                    {showBar && (
+                      <div className="dc-bar-wrap">
+                        <div
+                          className="dc-bar"
+                          style={{ width: `${barPct}%`, background: barColor }}
+                        />
+                      </div>
+                    )}
                   </div>
-                );
+                )
               })}
             </div>
           )}
-          <div className="add-workout-row u2" onClick={()=>setShowAddWorkout(true)}>
-            <div style={{display:"flex",color:"var(--ch)"}}>{TI.plus}</div><span>Add Workout</span>
+          <div className="add-workout-row u2" onClick={() => setShowAddWorkout(true)}>
+            <div style={{ display: 'flex', color: 'var(--ch)' }}>{TI.plus}</div>
+            <span>Add Workout</span>
           </div>
         </div>
       )}
 
       {/* ADD WORKOUT MODAL */}
-      {showAddWorkout&&(
-        <div className="modal-overlay" onClick={e=>{if(e.target===e.currentTarget)setShowAddWorkout(false);}}>
+      {showAddWorkout && (
+        <div
+          className="modal-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowAddWorkout(false)
+          }}
+        >
           <div className="modal-sheet">
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 16,
+              }}
+            >
               <div>
-                <div className="modal-title">{obSplit?"Pick exercises":"Add a workout"}</div>
-                <div className="modal-sub">{obSplit?`${obExStep+1}/${obSplit.days.length} — ${obSplit.days[obExStep]}`:"Pick a split to add to your program"}</div>
+                <div className="modal-title">{obSplit ? 'Pick exercises' : 'Add a workout'}</div>
+                <div className="modal-sub">
+                  {obSplit
+                    ? `${obExStep + 1}/${obSplit.days.length} — ${obSplit.days[obExStep]}`
+                    : 'Pick a split to add to your program'}
+                </div>
               </div>
-              <button onClick={()=>{setShowAddWorkout(false);setObSplit(null);setObExs({});setObExStep(0);}} style={{width:32,height:32,borderRadius:"50%",background:"var(--surface)",border:"none",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>✕</button>
+              <button
+                onClick={() => {
+                  setShowAddWorkout(false)
+                  setObSplit(null)
+                  setObExs({})
+                  setObExStep(0)
+                }}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: '50%',
+                  background: 'var(--surface)',
+                  border: 'none',
+                  fontSize: 16,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                ✕
+              </button>
             </div>
-            {!obSplit?(
-              ALL_SPLITS.map(s=>{
-                const alreadyHas=existingSplitIds.has(s.id);
-                return(
-                  <div key={s.id} className={`modal-split-opt${alreadyHas?" disabled":""}`}
-                    onClick={()=>{if(alreadyHas)return;setObSplit(s);setObExs({});setObExStep(0);}}>
+            {!obSplit ? (
+              ALL_SPLITS.map((s) => {
+                const alreadyHas = existingSplitIds.has(s.id)
+                return (
+                  <div
+                    key={s.id}
+                    className={`modal-split-opt${alreadyHas ? ' disabled' : ''}`}
+                    onClick={() => {
+                      if (alreadyHas) return
+                      setObSplit(s)
+                      setObExs({})
+                      setObExStep(0)
+                    }}
+                  >
                     <div className="modal-split-emoji">{s.emoji}</div>
-                    <div style={{flex:1}}>
+                    <div style={{ flex: 1 }}>
                       <div className="modal-split-name">{s.name}</div>
                       <div className="modal-split-desc">{s.desc}</div>
                     </div>
-                    {alreadyHas&&<div className="modal-split-badge">Added</div>}
+                    {alreadyHas && <div className="modal-split-badge">Added</div>}
                   </div>
-                );
+                )
               })
-            ):(
+            ) : (
               <div>
-                <div style={{fontSize:15,fontWeight:700,color:"var(--ch)",marginBottom:12}}>{obSplit.days[obExStep]} exercises <span style={{color:"var(--ink3)",fontWeight:500,fontSize:13}}>({(obExs[obSplit.days[obExStep]]||[]).length} selected)</span></div>
-                <div style={{maxHeight:340,overflowY:"auto",display:"flex",flexDirection:"column",gap:6}}>
-                  {getExLib(obSplit.days[obExStep]).map(ex=>{
-                    const curDay=obSplit.days[obExStep];
-                    const isOn=(obExs[curDay]||[]).includes(ex);
-                    return(
-                      <div key={ex} className={`ex-opt${isOn?" on":""}`} onClick={()=>toggleObEx(curDay,ex)}>
+                <div
+                  style={{ fontSize: 15, fontWeight: 700, color: 'var(--ch)', marginBottom: 12 }}
+                >
+                  {obSplit.days[obExStep]} exercises{' '}
+                  <span style={{ color: 'var(--ink3)', fontWeight: 500, fontSize: 13 }}>
+                    ({(obExs[obSplit.days[obExStep]] || []).length} selected)
+                  </span>
+                </div>
+                <div
+                  style={{
+                    maxHeight: 340,
+                    overflowY: 'auto',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6,
+                  }}
+                >
+                  {getExLib(obSplit.days[obExStep]).map((ex) => {
+                    const curDay = obSplit.days[obExStep]
+                    const isOn = (obExs[curDay] || []).includes(ex)
+                    return (
+                      <div
+                        key={ex}
+                        className={`ex-opt${isOn ? ' on' : ''}`}
+                        onClick={() => toggleObEx(curDay, ex)}
+                      >
                         <div className="ex-opt-name">{ex}</div>
                         <div className="ex-opt-chk">✓</div>
                       </div>
-                    );
+                    )
                   })}
                 </div>
-                <div style={{display:"flex",gap:8,marginTop:14}}>
-                  <button className="btn-o" style={{flex:1,padding:12}} onClick={()=>{if(obExStep>0)setObExStep(i=>i-1);else setObSplit(null);}}>← Back</button>
-                  <button className="btn-p" style={{flex:2,padding:12}} disabled={!(obExs[obSplit.days[obExStep]]||[]).length}
-                    onClick={async()=>{
-                      const isLast=obExStep===obSplit.days.length-1;
-                      if(isLast){await addProgram();setShowAddWorkout(false);}
-                      else setObExStep(i=>i+1);
-                    }}>
-                    {obExStep===obSplit.days.length-1?"Add to program →":`Next — ${obSplit.days[obExStep+1]} →`}
+                <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+                  <button
+                    className="btn-o"
+                    style={{ flex: 1, padding: 12 }}
+                    onClick={() => {
+                      if (obExStep > 0) setObExStep((i) => i - 1)
+                      else setObSplit(null)
+                    }}
+                  >
+                    ← Back
+                  </button>
+                  <button
+                    className="btn-p"
+                    style={{ flex: 2, padding: 12 }}
+                    disabled={!(obExs[obSplit.days[obExStep]] || []).length}
+                    onClick={async () => {
+                      const isLast = obExStep === obSplit.days.length - 1
+                      if (isLast) {
+                        await addProgram()
+                        setShowAddWorkout(false)
+                      } else setObExStep((i) => i + 1)
+                    }}
+                  >
+                    {obExStep === obSplit.days.length - 1
+                      ? 'Add to program →'
+                      : `Next — ${obSplit.days[obExStep + 1]} →`}
                   </button>
                 </div>
               </div>
@@ -1114,211 +2327,582 @@ export default function App() {
       )}
 
       {/* PROGRESS — redesigned to match Overload Web reference */}
-      {tab==="progress"&&(()=>{
-        const now=new Date();
-        const monthSessions=sessionLog.filter(s=>{const d=new Date(s.date);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
-        const monthSets=monthSessions.reduce((a,s)=>a+s.exercises.reduce((b,e)=>b+e.sets.length,0),0);
-        const monthVolume=monthSessions.reduce((a,s)=>a+s.exercises.reduce((b,e)=>b+e.sets.reduce((c,st)=>c+(parseFloat(st.w)||0)*(parseFloat(st.r)||0),0),0),0);
-        const monthLabel=now.toLocaleDateString("en-US",{month:"long",year:"numeric"});
-        const categories=[...new Set(programs.flatMap(p=>p.days||[]))];
-        const activeCat=(progExCat&&categories.includes(progExCat))?progExCat:categories[0];
-        const exToCat={};
-        programs.forEach(p=>Object.entries(p.exs||{}).forEach(([day,exs])=>(exs||[]).forEach(e=>{if(!exToCat[e])exToCat[e]=day;})));
-        const rangeDays={Week:7,"1M":30,"6M":182,"1Y":365,All:100000}[progRange];
-        const rangeCutoff=Date.now()-rangeDays*86400000;
-        const allTrackedExs=[...new Set(sessionLog.flatMap(s=>s.exercises.map(e=>e.name)))].filter(name=>!activeCat||exToCat[name]===activeCat);
-        const exWithProgress=allTrackedExs.map(exName=>{
-          const sessWithEx=sessionLog.filter(s=>s.exercises.some(e=>e.name===exName)&&new Date(s.date).getTime()>=rangeCutoff).slice().reverse();
-          const series=sessWithEx.map(s=>{
-            const exData=s.exercises.find(e=>e.name===exName);
-            const maxW=Math.max(...exData.sets.map(st=>parseFloat(st.w)||0).filter(v=>v>0));
-            return{date:s.date,weight:maxW};
-          }).filter(p=>p.weight>0);
-          if(series.length===0)return null;
-          const first=series[0].weight,last=series[series.length-1].weight;
-          const pct=first?Math.round(((last-first)/first)*100):0;
-          return{name:exName,series,first,last,sessions:series.length,pct};
-        }).filter(Boolean);
-        const rangeFilteredSessions=sessionLog.filter(s=>new Date(s.date).getTime()>=rangeCutoff);
+      {tab === 'progress' &&
+        (() => {
+          const now = new Date()
+          const monthSessions = sessionLog.filter((s) => {
+            const d = new Date(s.date)
+            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+          })
+          const monthSets = monthSessions.reduce(
+            (a, s) => a + s.exercises.reduce((b, e) => b + e.sets.length, 0),
+            0,
+          )
+          const monthVolume = monthSessions.reduce(
+            (a, s) =>
+              a +
+              s.exercises.reduce(
+                (b, e) =>
+                  b +
+                  e.sets.reduce(
+                    (c, st) => c + (parseFloat(st.w) || 0) * (parseFloat(st.r) || 0),
+                    0,
+                  ),
+                0,
+              ),
+            0,
+          )
+          const monthLabel = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+          const categories = [...new Set(programs.flatMap((p) => p.days || []))]
+          const activeCat = progExCat && categories.includes(progExCat) ? progExCat : categories[0]
+          const exToCat = {}
+          programs.forEach((p) =>
+            Object.entries(p.exs || {}).forEach(([day, exs]) =>
+              (exs || []).forEach((e) => {
+                if (!exToCat[e]) exToCat[e] = day
+              }),
+            ),
+          )
+          const rangeDays = { Week: 7, '1M': 30, '6M': 182, '1Y': 365, All: 100000 }[progRange]
+          const rangeCutoff = Date.now() - rangeDays * 86400000
+          const allTrackedExs = [
+            ...new Set(sessionLog.flatMap((s) => s.exercises.map((e) => e.name))),
+          ].filter((name) => !activeCat || exToCat[name] === activeCat)
+          const exWithProgress = allTrackedExs
+            .map((exName) => {
+              const sessWithEx = sessionLog
+                .filter(
+                  (s) =>
+                    s.exercises.some((e) => e.name === exName) &&
+                    new Date(s.date).getTime() >= rangeCutoff,
+                )
+                .slice()
+                .reverse()
+              const series = sessWithEx
+                .map((s) => {
+                  const exData = s.exercises.find((e) => e.name === exName)
+                  const maxW = Math.max(
+                    ...exData.sets.map((st) => parseFloat(st.w) || 0).filter((v) => v > 0),
+                  )
+                  return { date: s.date, weight: maxW }
+                })
+                .filter((p) => p.weight > 0)
+              if (series.length === 0) return null
+              const first = series[0].weight,
+                last = series[series.length - 1].weight
+              const pct = first ? Math.round(((last - first) / first) * 100) : 0
+              return { name: exName, series, first, last, sessions: series.length, pct }
+            })
+            .filter(Boolean)
+          const rangeFilteredSessions = sessionLog.filter(
+            (s) => new Date(s.date).getTime() >= rangeCutoff,
+          )
 
-        return(
-          <div className="prog-scroll">
-            <div className="prog-hdr-row u0"><div className="lbl" style={{marginBottom:0}}>Progress</div><div className="prog-month">{monthLabel}</div></div>
-
-            {/* Hero card */}
-            <div className="prog-hero u0">
-              <div className="prog-hero-blob"/>
-              <div className="prog-hero-lbl">This month</div>
-              {monthSessions.length===0?(
-                <><div className="prog-hero-title">Log a workout</div><div className="prog-hero-sub">Your progress will show up here</div></>
-              ):(
-                <><div className="prog-hero-title">{monthSessions.length} workout{monthSessions.length!==1?"s":""} logged</div><div className="prog-hero-sub">Keep up the momentum</div></>
-              )}
-              <div className="prog-hero-stats">
-                <div className="phs-item"><div className="phs-val">{monthSessions.length}</div><div className="phs-lbl">sessions</div></div>
-                <div className="phs-item"><div className="phs-val">{monthSets}</div><div className="phs-lbl">sets</div></div>
-                <div className="phs-item"><div className="phs-val">{monthVolume>=1000?`${(monthVolume/1000).toFixed(1)}k`:monthVolume}</div><div className="phs-lbl">volume</div></div>
-              </div>
-            </div>
-
-            {/* Segmented control */}
-            <div className="seg-ctrl u1">
-              {[{id:"strength",label:"Strength"},{id:"calendar",label:"Calendar"},{id:"history",label:"History"}].map(s=>(
-                <div key={s.id} className={`seg-opt${progSubTab===s.id?" on":""}`} onClick={()=>setProgSubTab(s.id)}>{s.label}</div>
-              ))}
-            </div>
-
-            {progSubTab==="strength"&&(
-              <div className="u2">
-                <div className="range-row">
-                  <div className="lbl" style={{marginBottom:0}}>Strength curves</div>
-                  <div className="range-pills">
-                    {["Week","1M","6M","1Y","All"].map(r=><div key={r} className={`range-pill${progRange===r?" on":""}`} onClick={()=>setProgRange(r)}>{r}</div>)}
-                  </div>
+          return (
+            <div className="prog-scroll">
+              <div className="prog-hdr-row u0">
+                <div className="lbl" style={{ marginBottom: 0 }}>
+                  Progress
                 </div>
-                {categories.length>0&&(
-                  <div className="cat-tabs">
-                    {categories.map(c=><div key={c} className={`cat-tab${activeCat===c?" on":""}`} onClick={()=>setProgExCat(c)}>{c}</div>)}
-                  </div>
+                <div className="prog-month">{monthLabel}</div>
+              </div>
+
+              {/* Hero card */}
+              <div className="prog-hero u0">
+                <div className="prog-hero-blob" />
+                <div className="prog-hero-lbl">This month</div>
+                {monthSessions.length === 0 ? (
+                  <>
+                    <div className="prog-hero-title">Log a workout</div>
+                    <div className="prog-hero-sub">Your progress will show up here</div>
+                  </>
+                ) : (
+                  <>
+                    <div className="prog-hero-title">
+                      {monthSessions.length} workout{monthSessions.length !== 1 ? 's' : ''} logged
+                    </div>
+                    <div className="prog-hero-sub">Keep up the momentum</div>
+                  </>
                 )}
-                {exWithProgress.length===0?(
-                  <div style={{background:"var(--white)",border:"1.5px solid var(--border)",borderRadius:16,padding:"20px 16px",boxShadow:"var(--sh)",textAlign:"center"}}>
-                    <div style={{fontSize:28,marginBottom:8}}>📈</div>
-                    <div style={{fontSize:14,fontWeight:600,color:"var(--ch)",marginBottom:4}}>No data in this range</div>
-                    <div style={{fontSize:13,color:"var(--ink3)"}}>Log sessions for this category to see strength curves here.</div>
+                <div className="prog-hero-stats">
+                  <div className="phs-item">
+                    <div className="phs-val">{monthSessions.length}</div>
+                    <div className="phs-lbl">sessions</div>
                   </div>
-                ):exWithProgress.map(ex=>{
-                  const diff=ex.last-ex.first;
-                  const open=!!expandedStr[ex.name];
-                  return(
-                    <div key={ex.name} className="str-card">
-                      <div className="str-card-hdr" onClick={()=>setExpStr(p=>({...p,[ex.name]:!p[ex.name]}))}>
-                        <div>
-                          <div className="str-card-name" style={{color:"var(--green)"}}>{ex.name}</div>
-                          <div className="str-card-sub">{ex.sessions} session{ex.sessions!==1?"s":""}</div>
-                        </div>
-                        <div style={{display:"flex",alignItems:"center",gap:8}}>
-                          <div className="str-card-nums">
-                            <span style={{color:"var(--ink3)"}}>{ex.first}</span> <span style={{color:"var(--ink3)"}}>→</span> <b style={{color:"var(--ch)",fontSize:15}}>{ex.last}{units}</b>
-                            {diff!==0&&<span style={{background:diff>0?"var(--green-l)":"var(--orange-l)",color:diff>0?"var(--green)":"var(--orange)",borderRadius:20,padding:"2px 8px",fontWeight:700,fontSize:11,marginLeft:4}}>{diff>0?"+":""}{ex.pct}%</span>}
-                          </div>
-                          <span className={`hist-sess-chev${open?" open":""}`}>▼</span>
-                        </div>
-                      </div>
-                      {open&&(
-                        <div className="str-card-body">
-                          <div className="chart-hdr">
-                            <span className="chart-title">Weight progression</span>
-                            <span className="chart-delta">{diff>=0?"+":""}{diff}{units} / {ex.sessions} session{ex.sessions!==1?"s":""}</span>
-                          </div>
-                          <WeightChart points={ex.series}/>
-                          <div className="chart-stats-row">
-                            <div className="chart-stat"><div className="chart-stat-lbl">Started</div><div className="chart-stat-val">{ex.first}{units}</div></div>
-                            <div className="chart-stat"><div className="chart-stat-lbl">Sessions</div><div className="chart-stat-val">{ex.sessions}</div></div>
-                            <div className="chart-stat"><div className="chart-stat-lbl">Current max</div><div className="chart-stat-val" style={{color:"var(--green)"}}>{ex.last}{units}</div></div>
-                          </div>
-                        </div>
-                      )}
+                  <div className="phs-item">
+                    <div className="phs-val">{monthSets}</div>
+                    <div className="phs-lbl">sets</div>
+                  </div>
+                  <div className="phs-item">
+                    <div className="phs-val">
+                      {monthVolume >= 1000 ? `${(monthVolume / 1000).toFixed(1)}k` : monthVolume}
                     </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {progSubTab==="calendar"&&(
-              <div className="u2" style={{background:"var(--white)",border:"1.5px solid var(--border)",borderRadius:16,padding:"16px",boxShadow:"var(--sh)"}}>
-                <CalendarView sessionLog={sessionLog}/>
-              </div>
-            )}
-
-            {progSubTab==="history"&&(
-              <div className="u2">
-                <div className="range-row">
-                  <div className="lbl" style={{marginBottom:0}}>Recent sessions</div>
-                  <div className="range-pills">
-                    {["Week","1M","6M","1Y","All"].map(r=><div key={r} className={`range-pill${progRange===r?" on":""}`} onClick={()=>setProgRange(r)}>{r}</div>)}
+                    <div className="phs-lbl">volume</div>
                   </div>
                 </div>
-                {rangeFilteredSessions.length===0?(
-                  <div className="empty-state"><div className="empty-state-icon">📋</div><div className="empty-state-text">No sessions in this range.</div></div>
-                ):rangeFilteredSessions.map(sess=>(
-                  <div className="hist-sess" key={sess.id}>
-                    <div className="hist-sess-hdr" onClick={()=>setExpS(p=>({...p,[sess.id]:!p[sess.id]}))}>
-                      <div><div className="hist-sess-date">{sess.dayName}{sess.partial?<span style={{color:"var(--orange)"}}> · Partial</span>:""}</div><div className="hist-sess-name">{fmtDate(sess.date)} · {sess.exercises.reduce((a,e)=>a+e.sets.length,0)} sets</div></div>
-                      <span className={`hist-sess-chev${expandedSess[sess.id]?" open":""}`}>▼</span>
-                    </div>
-                    {expandedSess[sess.id]&&(<div className="hist-sess-body">{sess.exercises.map((ex,ei)=>(<div key={ei}><div className="hist-ex-name">{ex.name}</div>{ex.sets.map((s,si)=><div className="hist-set-row" key={si}><div className="hist-set-n">Set {si+1}</div><div className="hist-set-val">{s.w} {units} × {s.r} reps</div></div>)}</div>))}</div>)}
+              </div>
+
+              {/* Segmented control */}
+              <div className="seg-ctrl u1">
+                {[
+                  { id: 'strength', label: 'Strength' },
+                  { id: 'calendar', label: 'Calendar' },
+                  { id: 'history', label: 'History' },
+                ].map((s) => (
+                  <div
+                    key={s.id}
+                    className={`seg-opt${progSubTab === s.id ? ' on' : ''}`}
+                    onClick={() => setProgSubTab(s.id)}
+                  >
+                    {s.label}
                   </div>
                 ))}
               </div>
-            )}
-          </div>
-        );
-      })()}
 
+              {progSubTab === 'strength' && (
+                <div className="u2">
+                  <div className="range-row">
+                    <div className="lbl" style={{ marginBottom: 0 }}>
+                      Strength curves
+                    </div>
+                    <div className="range-pills">
+                      {['Week', '1M', '6M', '1Y', 'All'].map((r) => (
+                        <div
+                          key={r}
+                          className={`range-pill${progRange === r ? ' on' : ''}`}
+                          onClick={() => setProgRange(r)}
+                        >
+                          {r}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {categories.length > 0 && (
+                    <div className="cat-tabs">
+                      {categories.map((c) => (
+                        <div
+                          key={c}
+                          className={`cat-tab${activeCat === c ? ' on' : ''}`}
+                          onClick={() => setProgExCat(c)}
+                        >
+                          {c}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {exWithProgress.length === 0 ? (
+                    <div
+                      style={{
+                        background: 'var(--white)',
+                        border: '1.5px solid var(--border)',
+                        borderRadius: 16,
+                        padding: '20px 16px',
+                        boxShadow: 'var(--sh)',
+                        textAlign: 'center',
+                      }}
+                    >
+                      <div style={{ fontSize: 28, marginBottom: 8 }}>📈</div>
+                      <div
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 600,
+                          color: 'var(--ch)',
+                          marginBottom: 4,
+                        }}
+                      >
+                        No data in this range
+                      </div>
+                      <div style={{ fontSize: 13, color: 'var(--ink3)' }}>
+                        Log sessions for this category to see strength curves here.
+                      </div>
+                    </div>
+                  ) : (
+                    exWithProgress.map((ex) => {
+                      const diff = ex.last - ex.first
+                      const open = !!expandedStr[ex.name]
+                      return (
+                        <div key={ex.name} className="str-card">
+                          <div
+                            className="str-card-hdr"
+                            onClick={() => setExpStr((p) => ({ ...p, [ex.name]: !p[ex.name] }))}
+                          >
+                            <div>
+                              <div className="str-card-name" style={{ color: 'var(--green)' }}>
+                                {ex.name}
+                              </div>
+                              <div className="str-card-sub">
+                                {ex.sessions} session{ex.sessions !== 1 ? 's' : ''}
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div className="str-card-nums">
+                                <span style={{ color: 'var(--ink3)' }}>{ex.first}</span>{' '}
+                                <span style={{ color: 'var(--ink3)' }}>→</span>{' '}
+                                <b style={{ color: 'var(--ch)', fontSize: 15 }}>
+                                  {ex.last}
+                                  {units}
+                                </b>
+                                {diff !== 0 && (
+                                  <span
+                                    style={{
+                                      background: diff > 0 ? 'var(--green-l)' : 'var(--orange-l)',
+                                      color: diff > 0 ? 'var(--green)' : 'var(--orange)',
+                                      borderRadius: 20,
+                                      padding: '2px 8px',
+                                      fontWeight: 700,
+                                      fontSize: 11,
+                                      marginLeft: 4,
+                                    }}
+                                  >
+                                    {diff > 0 ? '+' : ''}
+                                    {ex.pct}%
+                                  </span>
+                                )}
+                              </div>
+                              <span className={`hist-sess-chev${open ? ' open' : ''}`}>▼</span>
+                            </div>
+                          </div>
+                          {open && (
+                            <div className="str-card-body">
+                              <div className="chart-hdr">
+                                <span className="chart-title">Weight progression</span>
+                                <span className="chart-delta">
+                                  {diff >= 0 ? '+' : ''}
+                                  {diff}
+                                  {units} / {ex.sessions} session{ex.sessions !== 1 ? 's' : ''}
+                                </span>
+                              </div>
+                              <WeightChart points={ex.series} />
+                              <div className="chart-stats-row">
+                                <div className="chart-stat">
+                                  <div className="chart-stat-lbl">Started</div>
+                                  <div className="chart-stat-val">
+                                    {ex.first}
+                                    {units}
+                                  </div>
+                                </div>
+                                <div className="chart-stat">
+                                  <div className="chart-stat-lbl">Sessions</div>
+                                  <div className="chart-stat-val">{ex.sessions}</div>
+                                </div>
+                                <div className="chart-stat">
+                                  <div className="chart-stat-lbl">Current max</div>
+                                  <div className="chart-stat-val" style={{ color: 'var(--green)' }}>
+                                    {ex.last}
+                                    {units}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              )}
+
+              {progSubTab === 'calendar' && (
+                <div
+                  className="u2"
+                  style={{
+                    background: 'var(--white)',
+                    border: '1.5px solid var(--border)',
+                    borderRadius: 16,
+                    padding: '16px',
+                    boxShadow: 'var(--sh)',
+                  }}
+                >
+                  <CalendarView sessionLog={sessionLog} />
+                </div>
+              )}
+
+              {progSubTab === 'history' && (
+                <div className="u2">
+                  <div className="range-row">
+                    <div className="lbl" style={{ marginBottom: 0 }}>
+                      Recent sessions
+                    </div>
+                    <div className="range-pills">
+                      {['Week', '1M', '6M', '1Y', 'All'].map((r) => (
+                        <div
+                          key={r}
+                          className={`range-pill${progRange === r ? ' on' : ''}`}
+                          onClick={() => setProgRange(r)}
+                        >
+                          {r}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {rangeFilteredSessions.length === 0 ? (
+                    <div className="empty-state">
+                      <div className="empty-state-icon">📋</div>
+                      <div className="empty-state-text">No sessions in this range.</div>
+                    </div>
+                  ) : (
+                    rangeFilteredSessions.map((sess) => (
+                      <div className="hist-sess" key={sess.id}>
+                        <div
+                          className="hist-sess-hdr"
+                          onClick={() => setExpS((p) => ({ ...p, [sess.id]: !p[sess.id] }))}
+                        >
+                          <div>
+                            <div className="hist-sess-date">
+                              {sess.dayName}
+                              {sess.partial ? (
+                                <span style={{ color: 'var(--orange)' }}> · Partial</span>
+                              ) : (
+                                ''
+                              )}
+                            </div>
+                            <div className="hist-sess-name">
+                              {fmtDate(sess.date)} ·{' '}
+                              {sess.exercises.reduce((a, e) => a + e.sets.length, 0)} sets
+                            </div>
+                          </div>
+                          <span className={`hist-sess-chev${expandedSess[sess.id] ? ' open' : ''}`}>
+                            ▼
+                          </span>
+                        </div>
+                        {expandedSess[sess.id] && (
+                          <div className="hist-sess-body">
+                            {sess.exercises.map((ex, ei) => (
+                              <div key={ei}>
+                                <div className="hist-ex-name">{ex.name}</div>
+                                {ex.sets.map((s, si) => (
+                                  <div className="hist-set-row" key={si}>
+                                    <div className="hist-set-n">Set {si + 1}</div>
+                                    <div className="hist-set-val">
+                                      {s.w} {units} × {s.r} reps
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
       {/* PROFILE */}
-      {tab==="profile"&&(
+      {tab === 'profile' && (
         <div className="profile-scroll">
           <div className="profile-title">Profile</div>
           <div className="profile-user-card">
             <div className="puc-av">{ini(userName)}</div>
-            <div style={{flex:1}}>
-              {editingName?(<input className="puc-name-inp" value={nameInput} onChange={e=>setNameInput(e.target.value)} autoFocus onBlur={async()=>{if(nameInput.trim()){setUserName(nameInput.trim());if(user)await updateProfile({name:nameInput.trim()});}setEditName(false);}} onKeyDown={e=>{if(e.key==="Enter"){if(nameInput.trim())setUserName(nameInput.trim());setEditName(false);}}}/>):(
-                <div className="puc-name-row" onClick={()=>{setNameInput(userName);setEditName(true);}}><div className="puc-name">{userName}</div><div style={{color:"var(--ink3)",display:"flex"}}>{TI.edit}</div></div>
+            <div style={{ flex: 1 }}>
+              {editingName ? (
+                <input
+                  className="puc-name-inp"
+                  value={nameInput}
+                  onChange={(e) => setNameInput(e.target.value)}
+                  autoFocus
+                  onBlur={async () => {
+                    if (nameInput.trim()) {
+                      setUserName(nameInput.trim())
+                      if (user) await updateProfile({ name: nameInput.trim() })
+                    }
+                    setEditName(false)
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      if (nameInput.trim()) setUserName(nameInput.trim())
+                      setEditName(false)
+                    }
+                  }}
+                />
+              ) : (
+                <div
+                  className="puc-name-row"
+                  onClick={() => {
+                    setNameInput(userName)
+                    setEditName(true)
+                  }}
+                >
+                  <div className="puc-name">{userName}</div>
+                  <div style={{ color: 'var(--ink3)', display: 'flex' }}>{TI.edit}</div>
+                </div>
               )}
-              <div className="puc-sub">{user?`Signed in as ${user.email}`:"Guest — data not saved"}</div>
+              <div className="puc-sub">
+                {user ? `Signed in as ${user.email}` : 'Guest — data not saved'}
+              </div>
               <div className="puc-streak-pill">💪 {sessionLog.length} sessions logged</div>
             </div>
           </div>
-          {!user&&(
-            <div style={{margin:"0 0 4px",background:"var(--orange-l)",borderTop:"1px solid var(--orange-m)",borderBottom:"1px solid var(--orange-m)",padding:"12px 20px"}}>
-              <div style={{fontSize:13,color:"var(--orange)",fontWeight:700,marginBottom:4}}>You're using guest mode</div>
-              <div style={{fontSize:12,color:"var(--ink3)",marginBottom:8}}>Your data is saved locally. Sign in to back it up to the cloud.</div>
-              <button className="google-btn" style={{fontSize:13,padding:"10px"}} onClick={async()=>await signInWithGoogle()}>{TI.google} Sign in with Google</button>
+          {!user && (
+            <div
+              style={{
+                margin: '0 0 4px',
+                background: 'var(--orange-l)',
+                borderTop: '1px solid var(--orange-m)',
+                borderBottom: '1px solid var(--orange-m)',
+                padding: '12px 20px',
+              }}
+            >
+              <div
+                style={{ fontSize: 13, color: 'var(--orange)', fontWeight: 700, marginBottom: 4 }}
+              >
+                You're using guest mode
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--ink3)', marginBottom: 8 }}>
+                Your data is saved locally. Sign in to back it up to the cloud.
+              </div>
+              <button
+                className="google-btn"
+                style={{ fontSize: 13, padding: '10px' }}
+                onClick={async () => await signInWithGoogle()}
+              >
+                {TI.google} Sign in with Google
+              </button>
             </div>
           )}
 
           <div className="profile-section-lbl">Preferences</div>
           <div className="profile-group">
-            <div className="profile-row"><div className="profile-row-icon">{TI.weight}</div><div className="profile-row-label">Units</div><div className="units-toggle"><div className={`ut-opt${units==="kg"?" on":""}`} onClick={async()=>{setUnits("kg");if(user)await updateProfile({units:"kg"});}}>kg</div><div className={`ut-opt${units==="lbs"?" on":""}`} onClick={async()=>{setUnits("lbs");if(user)await updateProfile({units:"lbs"});}}>lbs</div></div></div>
-            <div className="profile-row"><div className="profile-row-icon">{TI.bell}</div><div className="profile-row-label">Training reminders</div><button className={`notif-toggle${notifEnabled?" on":""}`} onClick={async()=>{setNotif(p=>!p);if(user)await updateProfile({notif_enabled:!notifEnabled});}}><div className="notif-knob"/></button></div>
+            <div className="profile-row">
+              <div className="profile-row-icon">{TI.weight}</div>
+              <div className="profile-row-label">Units</div>
+              <div className="units-toggle">
+                <div
+                  className={`ut-opt${units === 'kg' ? ' on' : ''}`}
+                  onClick={async () => {
+                    setUnits('kg')
+                    if (user) await updateProfile({ units: 'kg' })
+                  }}
+                >
+                  kg
+                </div>
+                <div
+                  className={`ut-opt${units === 'lbs' ? ' on' : ''}`}
+                  onClick={async () => {
+                    setUnits('lbs')
+                    if (user) await updateProfile({ units: 'lbs' })
+                  }}
+                >
+                  lbs
+                </div>
+              </div>
+            </div>
+            <div className="profile-row">
+              <div className="profile-row-icon">{TI.bell}</div>
+              <div className="profile-row-label">Training reminders</div>
+              <button
+                className={`notif-toggle${notifEnabled ? ' on' : ''}`}
+                onClick={async () => {
+                  setNotif((p) => !p)
+                  if (user) await updateProfile({ notif_enabled: !notifEnabled })
+                }}
+              >
+                <div className="notif-knob" />
+              </button>
+            </div>
           </div>
           <div className="profile-section-lbl">Support & Legal</div>
           <div className="profile-group">
-            {[{icon:TI.megaphone,label:"Request a Feature"},{icon:TI.mail,label:"Support Email"},{icon:TI.doc,label:"Terms & Conditions"},{icon:TI.shield,label:"Privacy Policy"}].map((r,i)=><div className="profile-row" key={i}><div className="profile-row-icon">{r.icon}</div><div className="profile-row-label">{r.label}</div><div className="profile-row-chev">{TI.chevron}</div></div>)}
+            {[
+              { icon: TI.megaphone, label: 'Request a Feature' },
+              { icon: TI.mail, label: 'Support Email' },
+              { icon: TI.doc, label: 'Terms & Conditions' },
+              { icon: TI.shield, label: 'Privacy Policy' },
+            ].map((r, i) => (
+              <div className="profile-row" key={i}>
+                <div className="profile-row-icon">{r.icon}</div>
+                <div className="profile-row-label">{r.label}</div>
+                <div className="profile-row-chev">{TI.chevron}</div>
+              </div>
+            ))}
           </div>
           <div className="profile-section-lbl">Account Actions</div>
           <div className="profile-group">
-            {user&&<div className="profile-row" onClick={async()=>{await signOut();localStorage.removeItem('overload_migrated');localStorage.removeItem('overload_migration_started');setScreen("splash");setPrograms([]);setSessionLog([]);setWSets({});}}><div className="profile-row-icon">{TI.logout}</div><div className="profile-row-label">Logout</div><div className="profile-row-chev">{TI.chevron}</div></div>}
-            <div className="profile-row" onClick={async()=>{
-              if(!user){
-                if(!window.confirm("Clear your local guest data? This can't be undone."))return;
-                localStorage.removeItem('overload_programs');localStorage.removeItem('overload_sessionLog');localStorage.removeItem('overload_wSets');
-                setPrograms([]);setSessionLog([]);setWSets({});setScreen("splash");
-                return;
-              }
-              if(!window.confirm("Delete your account? This permanently removes all your programs, sessions, and workout data. This cannot be undone."))return;
-              const {error}=await deleteAccount();
-              if(error){showToast("Couldn't delete account — try again");return;}
-              localStorage.removeItem('overload_migrated');localStorage.removeItem('overload_migration_started');
-              localStorage.removeItem('overload_programs');localStorage.removeItem('overload_sessionLog');localStorage.removeItem('overload_wSets');
-              setScreen("splash");setPrograms([]);setSessionLog([]);setWSets({});
-              showToast("Account deleted");
-            }}><div className="profile-row-icon">{TI.trash}</div><div className="profile-row-label" style={{color:"#cc3333"}}>Delete Account</div><div className="profile-row-chev">{TI.chevron}</div></div>
+            {user && (
+              <div
+                className="profile-row"
+                onClick={async () => {
+                  await signOut()
+                  localStorage.removeItem('overload_migrated')
+                  localStorage.removeItem('overload_migration_started')
+                  setScreen('splash')
+                  setPrograms([])
+                  setSessionLog([])
+                  setWSets({})
+                }}
+              >
+                <div className="profile-row-icon">{TI.logout}</div>
+                <div className="profile-row-label">Logout</div>
+                <div className="profile-row-chev">{TI.chevron}</div>
+              </div>
+            )}
+            <div
+              className="profile-row"
+              onClick={async () => {
+                if (!user) {
+                  if (!window.confirm("Clear your local guest data? This can't be undone.")) return
+                  localStorage.removeItem('overload_programs')
+                  localStorage.removeItem('overload_sessionLog')
+                  localStorage.removeItem('overload_wSets')
+                  setPrograms([])
+                  setSessionLog([])
+                  setWSets({})
+                  setScreen('splash')
+                  return
+                }
+                if (
+                  !window.confirm(
+                    'Delete your account? This permanently removes all your programs, sessions, and workout data. This cannot be undone.',
+                  )
+                )
+                  return
+                const { error } = await deleteAccount()
+                if (error) {
+                  showToast("Couldn't delete account — try again")
+                  return
+                }
+                localStorage.removeItem('overload_migrated')
+                localStorage.removeItem('overload_migration_started')
+                localStorage.removeItem('overload_programs')
+                localStorage.removeItem('overload_sessionLog')
+                localStorage.removeItem('overload_wSets')
+                setScreen('splash')
+                setPrograms([])
+                setSessionLog([])
+                setWSets({})
+                showToast('Account deleted')
+              }}
+            >
+              <div className="profile-row-icon">{TI.trash}</div>
+              <div className="profile-row-label" style={{ color: '#cc3333' }}>
+                Delete Account
+              </div>
+              <div className="profile-row-chev">{TI.chevron}</div>
+            </div>
           </div>
           <div className="profile-version">VERSION 1.0.0</div>
         </div>
       )}
 
       <div className="tab-bar">
-        {[{id:"home",icon:TI.home,label:"Home"},{id:"progress",icon:TI.progress,label:"Progress"},{id:"profile",icon:TI.profile,label:"Profile"}].map(t=>(
-          <button key={t.id} className={`tab-item${tab===t.id?" on":""}`} onClick={()=>setTab(t.id)}>
+        {[
+          { id: 'home', icon: TI.home, label: 'Home' },
+          { id: 'progress', icon: TI.progress, label: 'Progress' },
+          { id: 'profile', icon: TI.profile, label: 'Profile' },
+        ].map((t) => (
+          <button
+            key={t.id}
+            className={`tab-item${tab === t.id ? ' on' : ''}`}
+            onClick={() => setTab(t.id)}
+          >
             <div className="tab-icon">{t.icon}</div>
             <div className="tab-label">{t.label}</div>
           </button>
         ))}
       </div>
     </div>
-  );
+  )
 }

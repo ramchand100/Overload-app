@@ -3,6 +3,7 @@
 Every rep counted.
 
 ## Tech Stack
+
 - React 18 + Vite (frontend)
 - Supabase (auth + database)
 - Vercel (hosting)

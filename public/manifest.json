@@ -1,0 +1,9 @@
+{
+  "name": "Overload",
+  "short_name": "Overload",
+  "description": "The simplest progressive overload tracker.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAFAFA",
+  "theme_color": "#2C2C2C"
+}
