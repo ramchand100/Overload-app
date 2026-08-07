@@ -13,7 +13,9 @@ export function useAuth() {
     })
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
     })
 
@@ -23,7 +25,7 @@ export function useAuth() {
   const signInWithGoogle = async () => {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin }
+      options: { redirectTo: window.location.origin },
     })
   }
 
@@ -40,7 +42,7 @@ export function useAuth() {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: name } }
+      options: { data: { full_name: name } },
     })
     return { error }
   }
