@@ -3053,13 +3053,11 @@ export default function App() {
                           onClick={() => setExpS((p) => ({ ...p, [sess.id]: !p[sess.id] }))}
                         >
                           <div>
-                            <div className="hist-sess-date">
+                            <div
+                              className="hist-sess-date"
+                              style={{ color: sess.partial ? 'var(--orange)' : 'var(--green)' }}
+                            >
                               {sess.dayName}
-                              {sess.partial ? (
-                                <span style={{ color: 'var(--orange)' }}> · Partial</span>
-                              ) : (
-                                ''
-                              )}
                             </div>
                             <div className="hist-sess-name">
                               {fmtDate(sess.date)} ·{' '}
