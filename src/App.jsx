@@ -5,6 +5,7 @@ import { TI } from './icons'
 import { MiniGraph } from './components/MiniGraph'
 import { WeightChart } from './components/WeightChart'
 import { CalendarView } from './components/CalendarView'
+import { WheelPicker } from './components/WheelPicker'
 
 /* ── Contextual line ── */
 const CtxLine = ({ text, orange }) => (
@@ -25,7 +26,7 @@ const S = `
     --sh-md:0 2px 12px rgba(0,0,0,.08),0 4px 24px rgba(0,0,0,.05);
   }
   body{background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased}
-  .app{max-width:390px;margin:0 auto;min-height:100vh;min-height:100dvh;background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+  .app{max-width:390px;margin:0 auto;height:100vh;height:100dvh;background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
   @keyframes up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
   @keyframes slideDown{from{opacity:0;transform:translateY(-50px)}to{opacity:1;transform:translateY(0)}}
   @keyframes toastOut{0%{opacity:1;transform:translate(-50%,0)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-10px)}}
@@ -87,8 +88,15 @@ const S = `
   .bridge-pg{flex:1;display:flex;flex-direction:column;justify-content:space-between;padding:40px 24px 48px}
   .bridge-title{font-size:32px;font-weight:800;letter-spacing:-.6px;line-height:1.15;color:var(--ch);margin-bottom:12px}
   .bridge-sub{font-size:15px;color:var(--ink3);line-height:1.65}
-  .ob-pg{flex:1;overflow-y:auto;padding:20px 20px 44px;display:flex;flex-direction:column;gap:20px}
-  .ob-pg::-webkit-scrollbar{display:none}
+  .ob-pg{flex:1;display:flex;flex-direction:column;overflow:hidden;padding:20px 20px 0}
+  .ob-pg-scroll{flex:1;overflow-y:auto;min-height:0;margin-top:20px}
+  .ob-pg-scroll::-webkit-scrollbar{display:none}
+  .ob-pg-bottom{padding:16px 0 44px;flex-shrink:0}
+  .unit-toggle{display:flex;background:var(--surface);border-radius:100px;padding:4px;gap:2px;width:fit-content;margin:0 auto}
+  .unit-opt{padding:8px 20px;border-radius:100px;font-size:13px;font-weight:700;color:var(--ink3);cursor:pointer;transition:all .15s}
+  .unit-opt.on{background:var(--white);color:var(--ch);box-shadow:var(--sh)}
+  .thanks-ring{width:140px;height:140px;border-radius:50%;background:radial-gradient(circle,rgba(232,80,10,.18) 0%,rgba(45,122,58,.1) 60%,transparent 75%);display:flex;align-items:center;justify-content:center;margin:0 auto 24px}
+  .thanks-ring-inner{font-size:56px}
   .freq-list{display:flex;flex-direction:column;gap:10px}
   .freq-opt{background:var(--white);border:1.5px solid var(--border);border-radius:16px;padding:18px 20px;cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:14px;box-shadow:var(--sh)}
   .freq-opt.on{background:var(--ch);border-color:var(--ch)}
@@ -109,6 +117,15 @@ const S = `
   .split-opt.on .split-desc{color:rgba(255,255,255,.5)}
   .split-chk{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:10px;color:transparent;transition:all .18s;flex-shrink:0;margin-left:auto}
   .split-opt.on .split-chk{background:white;border-color:white;color:var(--ch)}
+  .q-opt{background:var(--white);border:1.5px solid var(--border);border-radius:16px;padding:15px 17px;cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:12px;box-shadow:var(--sh)}
+  .q-opt.on{background:var(--ch);border-color:var(--ch)}
+  .q-opt-emoji{font-size:22px;flex-shrink:0}
+  .q-opt-label{flex:1;font-size:15px;font-weight:700;color:var(--ch);transition:color .15s}
+  .q-opt.on .q-opt-label{color:white}
+  .q-opt-radio{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .q-opt-radio-dot{width:11px;height:11px;border-radius:50%;background:transparent}
+  .q-opt.on .q-opt-radio{border-color:white}
+  .q-opt.on .q-opt-radio-dot{background:white}
   .ex-sel-list{display:flex;flex-direction:column;gap:7px}
   .ex-opt{background:var(--white);border:1.5px solid var(--border);border-radius:13px;padding:13px 16px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:10px;box-shadow:var(--sh)}
   .ex-opt.on{background:var(--ch);border-color:var(--ch)}
@@ -632,6 +649,50 @@ const FREQ_OPTS = [
   { id: '4-5', label: '4 – 5 days', sub: 'Consistent trainer, solid commitment', dots: 4 },
   { id: '6-7', label: '6 – 7 days', sub: 'Dedicated, advanced lifter', dots: 6 },
 ]
+const SEX_OPTS = [
+  { id: 'male', label: 'Male', emoji: '♂️' },
+  { id: 'female', label: 'Female', emoji: '♀️' },
+  { id: 'other', label: 'Other', emoji: '⚪' },
+]
+const REFERRAL_OPTS = [
+  { id: 'instagram', label: 'Instagram', emoji: '📷' },
+  { id: 'tiktok', label: 'TikTok', emoji: '🎵' },
+  { id: 'youtube', label: 'YouTube', emoji: '▶️' },
+  { id: 'google', label: 'Google', emoji: '🔍' },
+  { id: 'reddit', label: 'Reddit', emoji: '👽' },
+  { id: 'friend', label: 'Friend or family', emoji: '👥' },
+  { id: 'appstore', label: 'App Store', emoji: '📱' },
+  { id: 'other', label: 'Other', emoji: '✨' },
+]
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+]
+const OB_PROGRESS = {
+  ob_info: 8,
+  ob_sex: 18,
+  ob_referral: 26,
+  ob_prior_apps: 34,
+  ob_height: 42,
+  ob_weight: 50,
+  ob_dob: 58,
+  ob_thanks: 64,
+  ob_freq: 70,
+  ob_split: 78,
+  ob_exercises_base: 78,
+  ob_exercises_span: 18,
+  ob_auth: 96,
+}
 
 const DAYS_MON = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const JS_TO_MON = [6, 0, 1, 2, 3, 4, 5]
@@ -701,6 +762,18 @@ export default function App() {
   const [obSplit, setObSplit] = useState(null)
   const [obExs, setObExs] = useState({})
   const [obExStep, setObExStep] = useState(0)
+  const [obSex, setObSex] = useState(null)
+  const [obReferral, setObReferral] = useState(null)
+  const [obPriorApps, setObPriorApps] = useState(null)
+  const [obHeightUnit, setObHeightUnit] = useState('ft')
+  const [obHeightFt, setObHeightFt] = useState(5)
+  const [obHeightIn, setObHeightIn] = useState(8)
+  const [obHeightCm, setObHeightCm] = useState(173)
+  const [obWeightUnit, setObWeightUnit] = useState('lbs')
+  const [obWeightVal, setObWeightVal] = useState(160)
+  const [obDobMonth, setObDobMonth] = useState(1)
+  const [obDobDay, setObDobDay] = useState(1)
+  const [obDobYear, setObDobYear] = useState(2000)
   // Local state (synced to Supabase on changes, persisted to localStorage for guests)
   const [programs, setPrograms] = useState(() => {
     try {
@@ -1230,30 +1303,51 @@ export default function App() {
       <div className="app">
         <style>{S}</style>
         <div className="splash">
-          <div className="splash-space" />
+          <div
+            className="splash-space"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 24px' }}
+          >
+            <div className="pr-card u0" style={{ width: '100%' }}>
+              <div className="pr-blob" />
+              <div className="pr-lbl">Bench Press</div>
+              <div className="pr-ex-name">Tracked with Overload</div>
+              <div className="pr-nums">
+                <div className="pr-from">135</div>
+                <div className="pr-arrow">→</div>
+                <div className="pr-to">185</div>
+                <div className="pr-unit">lbs</div>
+              </div>
+              <div className="pr-sub">+50 lbs in 12 weeks</div>
+            </div>
+          </div>
           <div className="splash-bottom">
             <div className="splash-title u0">
-              Track every lift.
+              Get stronger,
               <br />
-              Beat it next time.
+              one lift at a time.
             </div>
-            <div className="splash-sub u1">The simplest progressive overload tracker.</div>
-            <button className="btn-p u2" onClick={() => setScreen('ob_info1')}>
+            <div className="splash-sub u1">
+              Overload tracks your progressive overload automatically — never guess your next set
+              again.
+            </div>
+            <button className="btn-p u2" onClick={() => setScreen('ob_info')}>
               Get Started
             </button>
-            <button
-              className="btn-o u3"
-              onClick={async () => {
-                await signInWithGoogle()
-              }}
-            >
-              Already have an account
-            </button>
+            <div className="splash-si u3">
+              Already have an account?{' '}
+              <span
+                onClick={async () => {
+                  await signInWithGoogle()
+                }}
+              >
+                Sign in
+              </span>
+            </div>
           </div>
         </div>
       </div>
     )
-  if (screen === 'ob_info1')
+  if (screen === 'ob_info')
     return (
       <div className="app">
         <style>{S}</style>
@@ -1264,7 +1358,7 @@ export default function App() {
         </div>
         <div className="ob-prog">
           <div className="ob-track">
-            <div className="ob-fill" style={{ width: '5%' }} />
+            <div className="ob-fill" style={{ width: `${OB_PROGRESS.ob_info}%` }} />
           </div>
         </div>
         <div className="ob-info-pg">
@@ -1285,98 +1379,378 @@ export default function App() {
             </div>
             <div className="ob-body u2">
               If you lift <b>slightly more each week</b> — more weight, more reps, or more sets —
-              your muscles must keep adapting and growing.
-              <br />
-              <br />
-              It's the most proven principle in all of fitness.
+              your muscles must keep adapting and growing. Overload takes 60 seconds to set up so
+              you're ready to start tracking today.
             </div>
           </div>
           <div className="ob-info-bottom">
-            <button className="btn-p u3" onClick={() => setScreen('ob_info2')}>
-              Next →
+            <button className="btn-p u3" onClick={() => setScreen('ob_sex')}>
+              Continue
             </button>
           </div>
         </div>
       </div>
     )
-  if (screen === 'ob_info2')
+  if (screen === 'ob_sex')
     return (
       <div className="app">
         <style>{S}</style>
         <div className="topbar">
-          <button className="back-btn" onClick={() => setScreen('ob_info1')}>
+          <button className="back-btn" onClick={() => setScreen('ob_info')}>
             ←
           </button>
         </div>
         <div className="ob-prog">
           <div className="ob-track">
-            <div className="ob-fill" style={{ width: '12%' }} />
+            <div className="ob-fill" style={{ width: `${OB_PROGRESS.ob_sex}%` }} />
           </div>
         </div>
-        <div className="ob-info-pg">
-          <div className="ob-info-top">
-            <div className="u0">
-              <div className="ob-q">Why most people stop progressing.</div>
+        <div className="ob-pg">
+          <div className="u0">
+            <div className="ob-q">What's your sex?</div>
+            <div style={{ fontSize: 14, color: 'var(--ink3)', marginTop: 4 }}>
+              This helps tailor strength benchmarks.
             </div>
-            <div className="u1">
-              <div className="chart2">
-                {[
-                  { lbl: 'With tracking', pct: 85, color: 'var(--ch)' },
-                  { lbl: 'Without tracking', pct: 22, color: 'var(--ink4)' },
-                ].map((r, i) => (
-                  <div className="c2-row" key={i}>
-                    <div className="c2-lbl">{r.lbl}</div>
-                    <div className="c2-wrap">
-                      <div className="c2-bar" style={{ width: `${r.pct}%`, background: r.color }} />
-                    </div>
-                    <div className="c2-val" style={{ color: r.color }}>
-                      {r.pct}%
-                    </div>
+          </div>
+          <div className="ob-pg-scroll">
+            <div className="freq-list u1">
+              {SEX_OPTS.map((o) => (
+                <div
+                  key={o.id}
+                  className={`q-opt${obSex === o.id ? ' on' : ''}`}
+                  onClick={() => setObSex(o.id)}
+                >
+                  <div className="q-opt-emoji">{o.emoji}</div>
+                  <div className="q-opt-label">{o.label}</div>
+                  <div className="q-opt-radio">
+                    <div className="q-opt-radio-dot" />
                   </div>
-                ))}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="ob-pg-bottom">
+            <button className="btn-p" disabled={!obSex} onClick={() => setScreen('ob_referral')}>
+              Continue
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  if (screen === 'ob_referral')
+    return (
+      <div className="app">
+        <style>{S}</style>
+        <div className="topbar">
+          <button className="back-btn" onClick={() => setScreen('ob_sex')}>
+            ←
+          </button>
+        </div>
+        <div className="ob-prog">
+          <div className="ob-track">
+            <div className="ob-fill" style={{ width: `${OB_PROGRESS.ob_referral}%` }} />
+          </div>
+        </div>
+        <div className="ob-pg">
+          <div className="u0">
+            <div className="ob-q">Where did you hear about us?</div>
+          </div>
+          <div className="ob-pg-scroll">
+            <div className="freq-list u1">
+              {REFERRAL_OPTS.map((o) => (
+                <div
+                  key={o.id}
+                  className={`q-opt${obReferral === o.id ? ' on' : ''}`}
+                  onClick={() => setObReferral(o.id)}
+                >
+                  <div className="q-opt-emoji">{o.emoji}</div>
+                  <div className="q-opt-label">{o.label}</div>
+                  <div className="q-opt-radio">
+                    <div className="q-opt-radio-dot" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="ob-pg-bottom">
+            <button
+              className="btn-p"
+              disabled={!obReferral}
+              onClick={() => setScreen('ob_prior_apps')}
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  if (screen === 'ob_prior_apps')
+    return (
+      <div className="app">
+        <style>{S}</style>
+        <div className="topbar">
+          <button className="back-btn" onClick={() => setScreen('ob_referral')}>
+            ←
+          </button>
+        </div>
+        <div className="ob-prog">
+          <div className="ob-track">
+            <div className="ob-fill" style={{ width: `${OB_PROGRESS.ob_prior_apps}%` }} />
+          </div>
+        </div>
+        <div className="ob-pg">
+          <div className="u0">
+            <div className="ob-q">
+              Have you tried other
+              <br />
+              workout tracking apps?
+            </div>
+          </div>
+          <div className="ob-pg-scroll">
+            <div className="freq-list u1">
+              {[
+                { id: 'yes', label: 'Yes', emoji: '👍' },
+                { id: 'no', label: 'No', emoji: '👎' },
+              ].map((o) => (
+                <div
+                  key={o.id}
+                  className={`q-opt${obPriorApps === o.id ? ' on' : ''}`}
+                  onClick={() => setObPriorApps(o.id)}
+                >
+                  <div className="q-opt-emoji">{o.emoji}</div>
+                  <div className="q-opt-label">{o.label}</div>
+                  <div className="q-opt-radio">
+                    <div className="q-opt-radio-dot" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="ob-pg-bottom">
+            <button
+              className="btn-p"
+              disabled={!obPriorApps}
+              onClick={() => setScreen('ob_height')}
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  if (screen === 'ob_height')
+    return (
+      <div className="app">
+        <style>{S}</style>
+        <div className="topbar">
+          <button className="back-btn" onClick={() => setScreen('ob_prior_apps')}>
+            ←
+          </button>
+        </div>
+        <div className="ob-prog">
+          <div className="ob-track">
+            <div className="ob-fill" style={{ width: `${OB_PROGRESS.ob_height}%` }} />
+          </div>
+        </div>
+        <div className="ob-pg">
+          <div className="u0">
+            <div className="ob-q">What is your height?</div>
+            <div style={{ fontSize: 14, color: 'var(--ink3)', marginTop: 4 }}>
+              This will be taken into account for your strength benchmarks.
+            </div>
+          </div>
+          <div className="ob-pg-scroll">
+            <div
+              className="unit-toggle u1"
+              style={{ marginTop: 24, marginBottom: 24 }}
+            >
+              <div
+                className={`unit-opt${obHeightUnit === 'ft' ? ' on' : ''}`}
+                onClick={() => setObHeightUnit('ft')}
+              >
+                ft, in
+              </div>
+              <div
+                className={`unit-opt${obHeightUnit === 'cm' ? ' on' : ''}`}
+                onClick={() => setObHeightUnit('cm')}
+              >
+                cm
               </div>
             </div>
-            <div className="ob-body u2">
-              They train hard but <b>never write anything down.</b> Every session they're guessing
-              the weight. Without a reference point, there's no overload.
-            </div>
+            {obHeightUnit === 'ft' ? (
+              <div className="u2" style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+                <WheelPicker
+                  options={Array.from({ length: 6 }, (_, i) => i + 3)}
+                  labelFn={(v) => `${v} ft`}
+                  value={obHeightFt}
+                  onChange={setObHeightFt}
+                />
+                <WheelPicker
+                  options={Array.from({ length: 12 }, (_, i) => i)}
+                  labelFn={(v) => `${v} in`}
+                  value={obHeightIn}
+                  onChange={setObHeightIn}
+                />
+              </div>
+            ) : (
+              <div className="u2" style={{ display: 'flex', justifyContent: 'center' }}>
+                <WheelPicker
+                  options={Array.from({ length: 121 }, (_, i) => i + 120)}
+                  labelFn={(v) => `${v} cm`}
+                  value={obHeightCm}
+                  onChange={setObHeightCm}
+                />
+              </div>
+            )}
           </div>
-          <div className="ob-info-bottom">
-            <button className="btn-p u3" onClick={() => setScreen('ob_bridge')}>
-              Next →
+          <div className="ob-pg-bottom">
+            <button className="btn-p" onClick={() => setScreen('ob_weight')}>
+              Continue
             </button>
           </div>
         </div>
       </div>
     )
-  if (screen === 'ob_bridge')
+  if (screen === 'ob_weight')
     return (
       <div className="app">
         <style>{S}</style>
         <div className="topbar">
-          <button className="back-btn" onClick={() => setScreen('ob_info2')}>
+          <button className="back-btn" onClick={() => setScreen('ob_height')}>
             ←
           </button>
         </div>
         <div className="ob-prog">
           <div className="ob-track">
-            <div className="ob-fill" style={{ width: '20%' }} />
+            <div className="ob-fill" style={{ width: `${OB_PROGRESS.ob_weight}%` }} />
+          </div>
+        </div>
+        <div className="ob-pg">
+          <div className="u0">
+            <div className="ob-q">What is your weight?</div>
+            <div style={{ fontSize: 14, color: 'var(--ink3)', marginTop: 4 }}>
+              This will be taken into account for your strength benchmarks.
+            </div>
+          </div>
+          <div className="ob-pg-scroll">
+            <div
+              className="unit-toggle u1"
+              style={{ marginTop: 24, marginBottom: 24 }}
+            >
+              <div
+                className={`unit-opt${obWeightUnit === 'lbs' ? ' on' : ''}`}
+                onClick={() => setObWeightUnit('lbs')}
+              >
+                lbs
+              </div>
+              <div
+                className={`unit-opt${obWeightUnit === 'kg' ? ' on' : ''}`}
+                onClick={() => setObWeightUnit('kg')}
+              >
+                kg
+              </div>
+            </div>
+            <div className="u2" style={{ display: 'flex', justifyContent: 'center' }}>
+              <WheelPicker
+                options={Array.from(
+                  { length: obWeightUnit === 'lbs' ? 380 : 170 },
+                  (_, i) => i + (obWeightUnit === 'lbs' ? 60 : 30),
+                )}
+                labelFn={(v) => `${v} ${obWeightUnit}`}
+                value={obWeightVal}
+                onChange={setObWeightVal}
+              />
+            </div>
+          </div>
+          <div className="ob-pg-bottom">
+            <button className="btn-p" onClick={() => setScreen('ob_dob')}>
+              Continue
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  if (screen === 'ob_dob')
+    return (
+      <div className="app">
+        <style>{S}</style>
+        <div className="topbar">
+          <button className="back-btn" onClick={() => setScreen('ob_weight')}>
+            ←
+          </button>
+        </div>
+        <div className="ob-prog">
+          <div className="ob-track">
+            <div className="ob-fill" style={{ width: `${OB_PROGRESS.ob_dob}%` }} />
+          </div>
+        </div>
+        <div className="ob-pg">
+          <div className="u0">
+            <div className="ob-q">When were you born?</div>
+            <div style={{ fontSize: 14, color: 'var(--ink3)', marginTop: 4 }}>
+              This will be taken into account for your strength benchmarks.
+            </div>
+          </div>
+          <div className="ob-pg-scroll">
+            <div
+              className="u1"
+              style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 24 }}
+            >
+              <WheelPicker
+                options={Array.from({ length: 12 }, (_, i) => i + 1)}
+                labelFn={(v) => MONTH_NAMES[v - 1]}
+                value={obDobMonth}
+                onChange={setObDobMonth}
+                width={110}
+              />
+              <WheelPicker
+                options={Array.from({ length: 31 }, (_, i) => i + 1)}
+                labelFn={(v) => `${v}`}
+                value={obDobDay}
+                onChange={setObDobDay}
+                width={60}
+              />
+              <WheelPicker
+                options={Array.from({ length: 100 }, (_, i) => today.getFullYear() - i)}
+                labelFn={(v) => `${v}`}
+                value={obDobYear}
+                onChange={setObDobYear}
+                width={70}
+              />
+            </div>
+          </div>
+          <div className="ob-pg-bottom">
+            <button className="btn-p" onClick={() => setScreen('ob_thanks')}>
+              Continue
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  if (screen === 'ob_thanks')
+    return (
+      <div className="app">
+        <style>{S}</style>
+        <div className="topbar">
+          <button className="back-btn" onClick={() => setScreen('ob_dob')}>
+            ←
+          </button>
+        </div>
+        <div className="ob-prog">
+          <div className="ob-track">
+            <div className="ob-fill" style={{ width: `${OB_PROGRESS.ob_thanks}%` }} />
           </div>
         </div>
         <div className="bridge-pg">
-          <div className="u0">
-            <div className="bridge-title">
-              Now let's build
-              <br />
-              your program.
+          <div className="u0" style={{ textAlign: 'center' }}>
+            <div className="thanks-ring">
+              <div className="thanks-ring-inner">🏋️</div>
             </div>
-            <div className="bridge-sub">
-              Takes 60 seconds. Set up your split and exercises so you're ready to start tracking
-              today.
-            </div>
+            <div className="bridge-title">You're all set.</div>
+            <div className="bridge-sub">Now let's build your training program.</div>
           </div>
           <button className="btn-p u1" onClick={() => setScreen('ob_freq')}>
-            Let's go →
+            Continue
           </button>
         </div>
       </div>
@@ -1386,13 +1760,13 @@ export default function App() {
       <div className="app">
         <style>{S}</style>
         <div className="topbar">
-          <button className="back-btn" onClick={() => setScreen('ob_bridge')}>
+          <button className="back-btn" onClick={() => setScreen('ob_thanks')}>
             ←
           </button>
         </div>
         <div className="ob-prog">
           <div className="ob-track">
-            <div className="ob-fill" style={{ width: '32%' }} />
+            <div className="ob-fill" style={{ width: `${OB_PROGRESS.ob_freq}%` }} />
           </div>
         </div>
         <div className="ob-pg">
@@ -1403,28 +1777,32 @@ export default function App() {
               you train?
             </div>
           </div>
-          <div className="freq-list u1">
-            {FREQ_OPTS.map((f) => (
-              <div
-                key={f.id}
-                className={`freq-opt${obFreq === f.id ? ' on' : ''}`}
-                onClick={() => setObFreq(f.id)}
-              >
-                <div className="freq-dots">
-                  {Array.from({ length: f.dots }, (_, i) => (
-                    <div key={i} className="freq-dot" />
-                  ))}
+          <div className="ob-pg-scroll">
+            <div className="freq-list u1">
+              {FREQ_OPTS.map((f) => (
+                <div
+                  key={f.id}
+                  className={`freq-opt${obFreq === f.id ? ' on' : ''}`}
+                  onClick={() => setObFreq(f.id)}
+                >
+                  <div className="freq-dots">
+                    {Array.from({ length: f.dots }, (_, i) => (
+                      <div key={i} className="freq-dot" />
+                    ))}
+                  </div>
+                  <div>
+                    <div className="freq-title">{f.label}</div>
+                    <div className="freq-sub">{f.sub}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="freq-title">{f.label}</div>
-                  <div className="freq-sub">{f.sub}</div>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-          <button className="btn-p u2" disabled={!obFreq} onClick={() => setScreen('ob_split')}>
-            Continue
-          </button>
+          <div className="ob-pg-bottom">
+            <button className="btn-p" disabled={!obFreq} onClick={() => setScreen('ob_split')}>
+              Continue
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -1442,7 +1820,7 @@ export default function App() {
         </div>
         <div className="ob-prog">
           <div className="ob-track">
-            <div className="ob-fill" style={{ width: '50%' }} />
+            <div className="ob-fill" style={{ width: `${OB_PROGRESS.ob_split}%` }} />
           </div>
         </div>
         <div className="ob-pg">
@@ -1450,40 +1828,42 @@ export default function App() {
             <div className="ob-q">Pick your split.</div>
             <div style={{ fontSize: 14, color: 'var(--ink3)', marginTop: 4 }}>All splits shown</div>
           </div>
-          <div className="split-list u1">
-            {ALL_SPLITS.map((s) => (
-              <div
-                key={s.id}
-                className={`split-opt${obSplit?.id === s.id ? ' on' : ''}`}
-                onClick={() => {
-                  setObSplit(s)
-                  setObExs({})
-                  setObExStep(0)
-                }}
-              >
-                <div className="split-emoji">{s.emoji}</div>
-                <div style={{ flex: 1 }}>
-                  <div className="split-name">{s.name}</div>
-                  <div className="split-desc">{s.desc}</div>
+          <div className="ob-pg-scroll">
+            <div className="split-list u1">
+              {ALL_SPLITS.map((s) => (
+                <div
+                  key={s.id}
+                  className={`split-opt${obSplit?.id === s.id ? ' on' : ''}`}
+                  onClick={() => {
+                    setObSplit(s)
+                    setObExs({})
+                    setObExStep(0)
+                  }}
+                >
+                  <div className="split-emoji">{s.emoji}</div>
+                  <div style={{ flex: 1 }}>
+                    <div className="split-name">{s.name}</div>
+                    <div className="split-desc">{s.desc}</div>
+                  </div>
+                  <div className="split-chk">✓</div>
                 </div>
-                <div className="split-chk">✓</div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-          <button
-            className="btn-p u2"
-            disabled={!obSplit}
-            onClick={() => setScreen('ob_exercises')}
-          >
-            Continue
-          </button>
+          <div className="ob-pg-bottom">
+            <button className="btn-p" disabled={!obSplit} onClick={() => setScreen('ob_exercises')}>
+              Continue
+            </button>
+          </div>
         </div>
       </div>
     )
   if (screen === 'ob_exercises') {
     const exLib = getExLib(curObDay)
     const curSel = obExs[curObDay] || []
-    const progress = 50 + ((obExStep + 1) / splitDays.length) * 30
+    const progress =
+      OB_PROGRESS.ob_exercises_base +
+      ((obExStep + 1) / splitDays.length) * OB_PROGRESS.ob_exercises_span
     return (
       <div className="app">
         <style>{S}</style>
@@ -1512,33 +1892,37 @@ export default function App() {
               {curSel.length} selected
             </div>
           </div>
-          <div className="ex-sel-list u1">
-            {exLib.map((ex) => {
-              const isOn = curSel.includes(ex)
-              return (
-                <div
-                  key={ex}
-                  className={`ex-opt${isOn ? ' on' : ''}`}
-                  onClick={() => toggleObEx(curObDay, ex)}
-                >
-                  <div className="ex-opt-name" title={ex}>
-                    {ex}
+          <div className="ob-pg-scroll">
+            <div className="ex-sel-list u1">
+              {exLib.map((ex) => {
+                const isOn = curSel.includes(ex)
+                return (
+                  <div
+                    key={ex}
+                    className={`ex-opt${isOn ? ' on' : ''}`}
+                    onClick={() => toggleObEx(curObDay, ex)}
+                  >
+                    <div className="ex-opt-name" title={ex}>
+                      {ex}
+                    </div>
+                    <div className="ex-opt-chk">✓</div>
                   </div>
-                  <div className="ex-opt-chk">✓</div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
-          <button
-            className="btn-p u2"
-            disabled={!curSel.length}
-            onClick={() => {
-              if (isLastDay) setScreen('ob_auth')
-              else setObExStep((i) => i + 1)
-            }}
-          >
-            {isLastDay ? 'Continue →' : `Next — ${splitDays[obExStep + 1]} →`}
-          </button>
+          <div className="ob-pg-bottom">
+            <button
+              className="btn-p"
+              disabled={!curSel.length}
+              onClick={() => {
+                if (isLastDay) setScreen('ob_auth')
+                else setObExStep((i) => i + 1)
+              }}
+            >
+              {isLastDay ? 'Continue →' : `Next — ${splitDays[obExStep + 1]} →`}
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -1555,7 +1939,7 @@ export default function App() {
         </div>
         <div className="ob-prog">
           <div className="ob-track">
-            <div className="ob-fill" style={{ width: '95%' }} />
+            <div className="ob-fill" style={{ width: `${OB_PROGRESS.ob_auth}%` }} />
           </div>
         </div>
         <div
@@ -1637,7 +2021,7 @@ export default function App() {
                 await signInWithGoogle()
               }}
             >
-              {TI.google} Continue with Google
+              {TI.google} Sign in with Google
             </button>
             <button className="btn-o" onClick={addProgram}>
               Skip for now
