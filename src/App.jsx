@@ -347,7 +347,6 @@ const S = `
   /* PROFILE */
   .profile-scroll{flex:1;overflow-y:auto;padding:0 0 44px;display:flex;flex-direction:column}
   .profile-scroll::-webkit-scrollbar{display:none}
-  .profile-title{font-size:28px;font-weight:800;letter-spacing:-.5px;color:var(--ch);padding:16px 20px 12px}
   .profile-section-lbl{font-size:13px;font-weight:600;color:var(--ink3);padding:14px 20px 6px}
   .profile-group{background:var(--white);border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:4px}
   .profile-row{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s}
@@ -357,12 +356,11 @@ const S = `
   .profile-row-value{font-size:14px;font-weight:600;color:var(--ink3);margin-right:4px}
   .profile-row-chev{color:var(--ink3);display:flex;align-items:center}
   .profile-user-card{display:flex;align-items:center;gap:14px;background:var(--white);padding:16px 20px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:4px}
-  .puc-av{width:52px;height:52px;border-radius:50%;background:var(--ch);color:white;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .puc-av{width:52px;height:52px;border-radius:50%;background:var(--ch);color:white;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
   .puc-name-row{display:flex;align-items:center;gap:6px;cursor:pointer}
   .puc-name{font-size:17px;font-weight:700;color:var(--ch)}
   .puc-name-inp{font-size:17px;font-weight:700;color:var(--ch);border:none;border-bottom:2px solid var(--orange);background:transparent;outline:none;font-family:'Inter',sans-serif;width:160px}
   .puc-sub{font-size:13px;color:var(--ink3);margin-top:2px}
-  .puc-streak-pill{display:inline-flex;align-items:center;gap:4px;background:var(--surface);border-radius:20px;padding:3px 9px;font-size:12px;font-weight:700;color:var(--ch);margin-top:6px}
   .profile-version{text-align:center;padding:20px;font-size:12px;color:var(--ink3)}
   .units-toggle{display:flex;background:var(--surface);border-radius:100px;padding:3px;gap:2px}
   .ut-opt{padding:5px 12px;border-radius:100px;font-size:12px;font-weight:600;cursor:pointer;color:var(--ink3);font-family:'Inter',sans-serif}
@@ -678,6 +676,7 @@ const MONTH_NAMES = [
   'November',
   'December',
 ]
+const AVATAR_OPTS = ['💪', '🔥', '🏋️', '⚡', '🦁', '🐺', '🎯', '🚀']
 const OB_PROGRESS = {
   ob_info: 8,
   ob_sex: 18,
@@ -810,6 +809,8 @@ export default function App() {
   const [userName, setUserName] = useState('Athlete')
   const [editingName, setEditName] = useState(false)
   const [nameInput, setNameInput] = useState('')
+  const [userAvatar, setUserAvatar] = useState(null)
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false)
   const [units, setUnits] = useState('kg')
   const [notifEnabled, setNotif] = useState(false)
   const [toast, setToast] = useState(null)
@@ -868,6 +869,7 @@ export default function App() {
       if (profile.name) setUserName(profile.name)
       if (profile.units) setUnits(profile.units)
       if (profile.notif_enabled !== undefined) setNotif(profile.notif_enabled)
+      if (profile.avatar) setUserAvatar(profile.avatar)
     }
     if (dbPrograms.length > 0 && screen === 'splash') setScreen('main')
   }, [user, dataLoading, dbPrograms, dbSessionLog, dbWorkoutState, profile])
@@ -936,7 +938,8 @@ export default function App() {
       return
     }
     const prog = { id: Date.now(), split: obSplit, days: obSplit.days, exs: obExs }
-    setPrograms((p) => [...p, prog])
+    const nextPrograms = [...programs, prog]
+    setPrograms(nextPrograms)
     const ws = { ...wSets }
     obSplit.days.forEach((d) => {
       ;(obExs[d] || []).forEach((ex) => {
@@ -944,6 +947,12 @@ export default function App() {
       })
     })
     setWSets(ws)
+    // Write guest data to localStorage synchronously here too — don't rely solely on the
+    // persistence useEffect below, which runs after paint and isn't guaranteed to fire
+    // before an OAuth redirect navigates away (see the ob_auth Google button, which calls
+    // addProgram() then signInWithGoogle()).
+    localStorage.setItem('overload_programs', JSON.stringify(nextPrograms))
+    localStorage.setItem('overload_wSets', JSON.stringify(ws))
     if (user) await saveProgram(prog)
     setScreen('main')
   }
@@ -2018,6 +2027,7 @@ export default function App() {
             <button
               className="google-btn"
               onClick={async () => {
+                await addProgram()
                 await signInWithGoogle()
               }}
             >
@@ -3078,9 +3088,10 @@ export default function App() {
       {/* PROFILE */}
       {tab === 'profile' && (
         <div className="profile-scroll">
-          <div className="profile-title">Profile</div>
           <div className="profile-user-card">
-            <div className="puc-av">{ini(userName)}</div>
+            <div className="puc-av" onClick={() => setShowAvatarPicker((v) => !v)}>
+              {userAvatar || ini(userName)}
+            </div>
             <div style={{ flex: 1 }}>
               {editingName ? (
                 <input
@@ -3117,9 +3128,45 @@ export default function App() {
               <div className="puc-sub">
                 {user ? `Signed in as ${user.email}` : 'Guest — data not saved'}
               </div>
-              <div className="puc-streak-pill">💪 {sessionLog.length} sessions logged</div>
             </div>
           </div>
+          {showAvatarPicker && (
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 8,
+                padding: '0 20px 16px',
+                background: 'var(--white)',
+                borderBottom: '1px solid var(--border)',
+              }}
+            >
+              {AVATAR_OPTS.map((a) => (
+                <div
+                  key={a}
+                  onClick={async () => {
+                    setUserAvatar(a)
+                    setShowAvatarPicker(false)
+                    if (user) await updateProfile({ avatar: a })
+                  }}
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: '50%',
+                    background: 'var(--surface)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 20,
+                    cursor: 'pointer',
+                    border: a === userAvatar ? '2px solid var(--ch)' : '2px solid transparent',
+                  }}
+                >
+                  {a}
+                </div>
+              ))}
+            </div>
+          )}
           {!user && (
             <div
               style={{

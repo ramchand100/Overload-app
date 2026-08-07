@@ -9,6 +9,7 @@ create table public.profiles (
   streak integer default 0,
   longest_streak integer default 0,
   last_streak_date text,
+  avatar text,
   created_at timestamp with time zone default timezone('utc'::text, now())
 );
 
