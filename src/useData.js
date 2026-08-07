@@ -170,11 +170,17 @@ export function useData(user) {
     }
   }
 
-  // Delete a saved session (used by "Reset" when a session was already logged for the day)
+  // Delete a saved session (used by "Reset" when a session was already logged for the day).
+  // .select() makes Postgres return the deleted row(s), so an RLS policy silently matching
+  // zero rows (error: null, no rows affected) is distinguishable from a real success.
   const deleteSession = async (sessionId) => {
-    const { error } = await supabase.from('sessions').delete().eq('id', sessionId)
-    if (!error) setSessionLog((p) => p.filter((s) => s.id !== sessionId))
-    return { error }
+    const { data, error } = await supabase.from('sessions').delete().eq('id', sessionId).select()
+    if (error) return { error }
+    if (!data || data.length === 0) {
+      return { error: new Error('Session was not deleted (check RLS policy)') }
+    }
+    setSessionLog((p) => p.filter((s) => s.id !== sessionId))
+    return { error: null }
   }
 
   // Save workout state (last weights per exercise)

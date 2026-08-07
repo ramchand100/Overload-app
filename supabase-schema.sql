@@ -62,6 +62,7 @@ create policy "Users can delete own programs" on public.programs for delete usin
 create policy "Users can view own sessions" on public.sessions for select using (auth.uid() = user_id);
 create policy "Users can insert own sessions" on public.sessions for insert with check (auth.uid() = user_id);
 create policy "Users can update own sessions" on public.sessions for update using (auth.uid() = user_id);
+create policy "Users can delete own sessions" on public.sessions for delete using (auth.uid() = user_id);
 
 create policy "Users can view own workout state" on public.workout_state for select using (auth.uid() = user_id);
 create policy "Users can insert own workout state" on public.workout_state for insert with check (auth.uid() = user_id);
