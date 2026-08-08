@@ -815,15 +815,10 @@ export default function App() {
   const [notifEnabled, setNotif] = useState(false)
   const [toast, setToast] = useState(null)
   const toastRef = useRef(null)
-  const [progSubTab, setProgSubTab] = useState('strength')
   const [progRangeStrength, setProgRangeStrength] = useState('All')
   const [progRangeHistory, setProgRangeHistory] = useState('All')
   const [progExCat, setProgExCat] = useState(null)
   const [expandedStr, setExpStr] = useState({})
-  const progScrollRef = useRef(null)
-  useEffect(() => {
-    if (progScrollRef.current) progScrollRef.current.scrollTop = 0
-  }, [progSubTab])
 
   // Persist guest data locally so it survives page reloads / OAuth redirects
   useEffect(() => {
@@ -2811,11 +2806,8 @@ export default function App() {
           )
 
           return (
-            <div className="prog-scroll" ref={progScrollRef}>
-              <div className="prog-hdr-row u0">
-                <div className="lbl" style={{ marginBottom: 0 }}>
-                  Progress
-                </div>
+            <div className="prog-scroll">
+              <div className="prog-hdr-row u0" style={{ justifyContent: 'flex-end' }}>
                 <div className="prog-month">{monthLabel}</div>
               </div>
 
@@ -2854,25 +2846,23 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Segmented control */}
-              <div className="seg-ctrl u1">
-                {[
-                  { id: 'strength', label: 'Strength' },
-                  { id: 'calendar', label: 'Calendar' },
-                  { id: 'history', label: 'History' },
-                ].map((s) => (
-                  <div
-                    key={s.id}
-                    className={`seg-opt${progSubTab === s.id ? ' on' : ''}`}
-                    onClick={() => setProgSubTab(s.id)}
-                  >
-                    {s.label}
-                  </div>
-                ))}
+              <div className="lbl u2" style={{ marginTop: 4 }}>
+                Calendar
+              </div>
+              <div
+                className="u2"
+                style={{
+                  background: 'var(--white)',
+                  border: '1.5px solid var(--border)',
+                  borderRadius: 16,
+                  padding: '16px',
+                  boxShadow: 'var(--sh)',
+                }}
+              >
+                <CalendarView sessionLog={sessionLog} />
               </div>
 
-              {progSubTab === 'strength' && (
-                <div className="u2">
+              <div className="u2">
                   <div className="range-row">
                     <div className="lbl" style={{ marginBottom: 0 }}>
                       Strength curves
@@ -3012,25 +3002,8 @@ export default function App() {
                     })
                   )}
                 </div>
-              )}
 
-              {progSubTab === 'calendar' && (
-                <div
-                  className="u2"
-                  style={{
-                    background: 'var(--white)',
-                    border: '1.5px solid var(--border)',
-                    borderRadius: 16,
-                    padding: '16px',
-                    boxShadow: 'var(--sh)',
-                  }}
-                >
-                  <CalendarView sessionLog={sessionLog} />
-                </div>
-              )}
-
-              {progSubTab === 'history' && (
-                <div className="u2">
+              <div className="u2">
                   <div className="range-row">
                     <div className="lbl" style={{ marginBottom: 0 }}>
                       Recent sessions
@@ -3096,7 +3069,6 @@ export default function App() {
                     ))
                   )}
                 </div>
-              )}
             </div>
           )
         })()}
