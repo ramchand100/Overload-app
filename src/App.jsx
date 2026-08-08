@@ -6,6 +6,7 @@ import { MiniGraph } from './components/MiniGraph'
 import { WeightChart } from './components/WeightChart'
 import { CalendarView } from './components/CalendarView'
 import { WheelPicker } from './components/WheelPicker'
+import { exportHistoryPdf } from './exportHistoryPdf'
 
 /* ── Contextual line ── */
 const CtxLine = ({ text, orange }) => (
@@ -3020,6 +3021,15 @@ export default function App() {
                       ))}
                     </div>
                   </div>
+                  {rangeFilteredSessions.length > 0 && (
+                    <div
+                      className="range-pill on"
+                      style={{ display: 'inline-block', marginBottom: 12, cursor: 'pointer' }}
+                      onClick={() => exportHistoryPdf(rangeFilteredSessions, units)}
+                    >
+                      Export PDF
+                    </div>
+                  )}
                   {rangeFilteredSessions.length === 0 ? (
                     <div className="empty-state">
                       <div className="empty-state-icon">📋</div>
