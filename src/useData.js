@@ -58,6 +58,8 @@ export function useData(user) {
           dayName: s.day_name,
           exercises: s.exercises,
           partial: s.partial,
+          totalSets: s.total_sets,
+          doneSets: s.done_sets,
         })),
       )
   }
@@ -141,6 +143,8 @@ export function useData(user) {
         .update({
           exercises: session.exercises,
           partial: session.partial,
+          total_sets: session.totalSets,
+          done_sets: session.doneSets,
         })
         .eq('id', existing.id)
       if (!error)
@@ -154,6 +158,8 @@ export function useData(user) {
           day_name: session.dayName,
           exercises: session.exercises,
           partial: session.partial,
+          total_sets: session.totalSets,
+          done_sets: session.doneSets,
           logged_at: new Date(dateMs).toISOString(),
         })
         .select()
@@ -167,6 +173,8 @@ export function useData(user) {
               dayName: data.day_name,
               exercises: data.exercises,
               partial: data.partial,
+              totalSets: data.total_sets,
+              doneSets: data.done_sets,
             },
             ...p,
           ].sort((a, b) => b.date - a.date),

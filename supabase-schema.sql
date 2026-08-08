@@ -31,8 +31,15 @@ create table public.sessions (
   day_name text not null,
   exercises jsonb not null,
   partial boolean default false,
+  total_sets integer,
+  done_sets integer,
   logged_at timestamp with time zone default timezone('utc'::text, now())
 );
+
+-- If you're re-running this against a project that already has the sessions table,
+-- the create table above will fail (table already exists) — run just these two lines instead:
+-- alter table public.sessions add column if not exists total_sets integer;
+-- alter table public.sessions add column if not exists done_sets integer;
 
 -- Workout sets state (last known weights per exercise)
 create table public.workout_state (

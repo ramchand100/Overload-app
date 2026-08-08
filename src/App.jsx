@@ -1087,6 +1087,11 @@ export default function App() {
       // instead of recomputing a ratio against today's (possibly different) live set
       // counts, which can make a fully completed day look partial.
       if (!completed.partial) return 100
+      if (typeof completed.totalSets === 'number' && completed.totalSets > 0) {
+        return Math.round((completed.doneSets / completed.totalSets) * 100)
+      }
+      // Legacy session saved before totalSets/doneSets existed — fall back to the old
+      // approximation so existing history doesn't break.
       const totalSaved = completed.exercises.reduce((a, ex) => a + ex.sets.length, 0)
       const totalExpected = getDayExs(dayName).reduce((a, ex) => a + (wSets[ex]?.length || 0), 0)
       if (totalExpected === 0) return 100
@@ -1124,17 +1129,28 @@ export default function App() {
     const exNames = existingSess
       ? [...new Set([...getDayExs(dayName), ...existingSess.exercises.map((e) => e.name)])]
       : getDayExs(dayName)
-    const untouched = exNames.filter((ex) => (activeSets[ex] || []).every((s) => !s.done))
-    const isPartial = untouched.length > 0
+    // Keep ALL of a touched exercise's sets (not just the typed-or-done ones) so the true
+    // set count for a partially-touched exercise survives into history and reopening — an
+    // exercise with zero typed/done sets stays excluded entirely, same as before.
     const sessExs = exNames
-      .map((ex) => ({
-        name: ex,
-        sets: (activeSets[ex] || [])
-          .filter((s) => s.typed || s.done)
-          .map((s) => ({ w: s.w || s.lastW, r: s.r || s.lastR })),
-      }))
+      .map((ex) => {
+        const sets = activeSets[ex] || []
+        const touched = sets.some((s) => s.typed || s.done)
+        return {
+          name: ex,
+          sets: touched ? sets.map((s) => ({ w: s.w || s.lastW, r: s.r || s.lastR, done: s.done })) : [],
+        }
+      })
       .filter((e) => e.sets.length > 0)
-    const sessionPayload = { dayName, exercises: sessExs, partial: isPartial, date: dateMs }
+    // Save the true completion counts directly from live state at Finish time, rather than
+    // making every later percentage display try to reconstruct them from the (necessarily
+    // partial) saved `exercises` record. A session is only fully done when every set across
+    // every exercise is actually ticked — matching an exercise once and leaving the rest
+    // untouched no longer counts as "done".
+    const totalSets = exNames.reduce((a, ex) => a + (activeSets[ex]?.length || 0), 0)
+    const doneSets = exNames.reduce((a, ex) => a + (activeSets[ex]?.filter((s) => s.done).length || 0), 0)
+    const isPartial = doneSets < totalSets
+    const sessionPayload = { dayName, exercises: sessExs, partial: isPartial, totalSets, doneSets, date: dateMs }
 
     if (user) {
       const { error } = await saveSession(sessionPayload)
@@ -1151,7 +1167,7 @@ export default function App() {
       if (existingIdx >= 0) {
         setSessionLog((p) => {
           const u = [...p]
-          u[existingIdx] = { ...u[existingIdx], exercises: sessExs, partial: isPartial }
+          u[existingIdx] = { ...u[existingIdx], exercises: sessExs, partial: isPartial, totalSets, doneSets }
           return u
         })
       } else {
@@ -1159,37 +1175,48 @@ export default function App() {
       }
     }
 
-    // Only sync the shared "last known weights" template when finishing today's own
-    // session — it exists to prefill your next real session, not to reflect whatever
-    // was just backfilled into history. A past-day Finish must never touch it, since
-    // it's keyed only by exercise name and shared by every day/date using that exercise.
-    if (sessionDate === null) {
-      const nextWSets = {}
-      for (const ex of exNames) {
-        const updatedSets = isPartial
-          ? (activeSets[ex] || []).map((s) => ({
-              ...s,
-              lastW: s.typed && s.w ? s.w : s.lastW,
-              lastR: s.typed && s.r ? s.r : s.lastR,
-            }))
-          : (activeSets[ex] || []).map((s) => ({
-              ...s,
-              done: false,
-              lastW: s.typed && s.w ? s.w : s.lastW,
-              lastR: s.typed && s.r ? s.r : s.lastR,
-              w: s.typed && s.w ? s.w : s.lastW !== '—' ? s.lastW : '',
-              r: s.typed && s.r ? s.r : s.lastR !== '—' ? s.lastR : '',
-              typed: false,
-            }))
-        nextWSets[ex] = updatedSets
-        if (user) {
-          const { error } = await saveWorkoutState(ex, updatedSets)
-          if (error) showToast(`Couldn't save ${ex} — try again`)
-        }
+    // Sync the shared "last known weights" template per exercise, but only when this session
+    // is the chronologically most recent one that touches that exercise. A live "today" finish
+    // is always the latest by definition, so this doesn't change today's behavior. A backfilled
+    // past day only flows forward for exercises where nothing more recent has been logged yet —
+    // so a genuinely-latest backfill correctly becomes the new baseline (set count and numbers
+    // included), without letting an old correction to distant history clobber more recent data.
+    const nextWSets = {}
+    for (const ex of exNames) {
+      const latestOtherDate = sessionLog.reduce((max, s) => {
+        if (s.id === existingSess?.id) return max
+        if (!s.exercises.some((e) => e.name === ex)) return max
+        return Math.max(max, s.date)
+      }, -Infinity)
+      if (dateMs < latestOtherDate) continue
+      // Only a still-in-progress TODAY session preserves ticks — so coming back later today
+      // to continue it shows what you've already done. Every other case (today fully done, or
+      // any backfilled/past-day Finish regardless of its own partial state) resets done/typed —
+      // a future fresh session should start unticked, carrying forward only the reference
+      // numbers and set count, never "already done" checkmarks from a session that's over.
+      const updatedSets = sessionDate === null && isPartial
+        ? (activeSets[ex] || []).map((s) => ({
+            ...s,
+            lastW: s.typed && s.w ? s.w : s.lastW,
+            lastR: s.typed && s.r ? s.r : s.lastR,
+          }))
+        : (activeSets[ex] || []).map((s) => ({
+            ...s,
+            done: false,
+            lastW: s.typed && s.w ? s.w : s.lastW,
+            lastR: s.typed && s.r ? s.r : s.lastR,
+            w: s.typed && s.w ? s.w : s.lastW !== '—' ? s.lastW : '',
+            r: s.typed && s.r ? s.r : s.lastR !== '—' ? s.lastR : '',
+            typed: false,
+          }))
+      nextWSets[ex] = updatedSets
+      if (user) {
+        const { error } = await saveWorkoutState(ex, updatedSets)
+        if (error) showToast(`Couldn't save ${ex} — try again`)
       }
-      if (!user) setWSets((p) => ({ ...p, ...nextWSets }))
-      // Signed-in: saveWorkoutState already updated the hook's state; the sync effect mirrors it locally.
     }
+    if (!user) setWSets((p) => ({ ...p, ...nextWSets }))
+    // Signed-in: saveWorkoutState already updated the hook's state; the sync effect mirrors it locally.
 
     if (!isPartial) {
       setCollapsedDone({})
@@ -2633,14 +2660,27 @@ export default function App() {
                       namesToSeed.forEach((ex) => {
                         const savedEx = todaySess?.exercises.find((e) => e.name === ex)
                         if (savedEx) {
-                          seed[ex] = savedEx.sets.map((s) => ({
-                            w: s.w,
-                            r: s.r,
-                            done: true,
-                            lastW: s.w,
-                            lastR: s.r,
-                            typed: true,
-                          }))
+                          // Sets now persist even when blank (as long as their exercise was
+                          // touched), so tell apart a genuinely-blank preserved slot from a
+                          // reviewed value instead of marking everything ticked/typed. Sets
+                          // saved before this fix have no `done` field at all — treat those as
+                          // done (the old behavior) rather than guessing they're unticked.
+                          const isLegacySet = (s) => s.done === undefined
+                          seed[ex] = savedEx.sets.map((s) => {
+                            if (!s.w && !isLegacySet(s) && !s.done) {
+                              const lastW = wSets[ex]?.[0]?.lastW ?? '—'
+                              const lastR = wSets[ex]?.[0]?.lastR ?? '—'
+                              return { w: '', r: '', done: false, lastW, lastR, typed: false }
+                            }
+                            return {
+                              w: s.w,
+                              r: s.r,
+                              done: isLegacySet(s) ? true : !!s.done,
+                              lastW: s.w,
+                              lastR: s.r,
+                              typed: true,
+                            }
+                          })
                         } else {
                           const setCount = (wSets[ex] || []).length || 1
                           const lastW = wSets[ex]?.[0]?.lastW ?? '—'
@@ -3202,7 +3242,7 @@ export default function App() {
                                   <div className="hist-set-row" key={si}>
                                     <div className="hist-set-n">Set {si + 1}</div>
                                     <div className="hist-set-val">
-                                      {s.w} {units} × {s.r} reps
+                                      {s.w || s.done ? `${s.w} ${units} × ${s.r} reps` : '—'}
                                     </div>
                                   </div>
                                 ))}
