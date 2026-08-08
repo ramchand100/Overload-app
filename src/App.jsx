@@ -1069,17 +1069,18 @@ export default function App() {
     return `${b.w}${units}×${b.r}`
   }
 
-  const getSessPct = (dayName) => {
-    const todayKey = localDateStr(Date.now())
-    const completedToday = sessionLog.find(
-      (s) => s.dayName === dayName && localDateStr(s.date) === todayKey,
-    )
-    if (completedToday) {
-      const totalSaved = completedToday.exercises.reduce((a, ex) => a + ex.sets.length, 0)
+  const getSessPct = (dayName, dateMs = Date.now()) => {
+    const dateKey = localDateStr(dateMs)
+    const completed = sessionLog.find((s) => s.dayName === dayName && localDateStr(s.date) === dateKey)
+    if (completed) {
+      const totalSaved = completed.exercises.reduce((a, ex) => a + ex.sets.length, 0)
       const totalExpected = getDayExs(dayName).reduce((a, ex) => a + (wSets[ex]?.length || 0), 0)
       if (totalExpected === 0) return 100
       return Math.min(100, Math.round((totalSaved / totalExpected) * 100))
     }
+    // Only "today" is allowed to fall back to the live, dateless wSets buffer —
+    // a past day with no saved session has nothing in progress by definition.
+    if (dateKey !== localDateStr(Date.now())) return 0
     const exs = getDayExs(dayName)
     const tot = exs.reduce((a, ex) => a + (wSets[ex]?.length || 0), 0)
     const done = exs.reduce((a, ex) => a + (wSets[ex]?.filter((s) => s.done).length || 0), 0)
@@ -2385,7 +2386,9 @@ export default function App() {
                   )
                 : null
               const isPartialDay = done && todaySessEntry?.partial
-              const partialPct = isPartialDay ? getSessPct(trainedSess) : 100
+              const partialPct = isPartialDay
+                ? getSessPct(trainedSess, today.getTime() - (todayMonIdx - i) * 86400000)
+                : 100
               const showCard = isToday || isViewing
               const dateColor = done
                 ? isPartialDay
@@ -2518,12 +2521,16 @@ export default function App() {
                   : null
                 const isPartialToday = isDoneToday && todaySess?.partial
                 const isFullToday = isDoneToday && !isPartialToday
-                const pct = isDoneToday ? getSessPct(dayName) : 0
-                const { tot, done } = getSessSetCounts(dayName)
-                const inProgress = done > 0 && !isDoneToday
-                const remaining = exNames.filter((ex) =>
-                  (wSets[ex] || []).every((s) => !s.done),
-                ).length
+                const pct = isDoneToday
+                  ? getSessPct(dayName, today.getTime() - (todayMonIdx - viewIdx) * 86400000)
+                  : 0
+                // Only fall back to the live, dateless wSets buffer when viewing today —
+                // a past day with nothing persisted should never show today's leftover progress.
+                const { tot, done } = isViewingPast ? { tot: 0, done: 0 } : getSessSetCounts(dayName)
+                const inProgress = !isViewingPast && done > 0 && !isDoneToday
+                const remaining = isViewingPast
+                  ? 0
+                  : exNames.filter((ex) => (wSets[ex] || []).every((s) => !s.done)).length
                 const barPct = isDoneToday ? pct : tot > 0 ? Math.round((done / tot) * 100) : 0
                 const showBar = barPct > 0
                 const barColor = isFullToday ? 'var(--green)' : 'var(--orange)'
