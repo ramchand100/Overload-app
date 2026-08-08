@@ -1105,12 +1105,6 @@ export default function App() {
     const done = exs.reduce((a, ex) => a + (wSets[ex]?.filter((s) => s.done).length || 0), 0)
     return tot > 0 ? Math.round((done / tot) * 100) : 0
   }
-  const getSessSetCounts = (dayName) => {
-    const exs = getDayExs(dayName)
-    const tot = exs.reduce((a, ex) => a + (wSets[ex]?.length || 0), 0)
-    const done = exs.reduce((a, ex) => a + (wSets[ex]?.filter((s) => s.done).length || 0), 0)
-    return { tot, done }
-  }
   const anyDone = (dayName) =>
     getDayExs(dayName).some((ex) => (activeSets[ex] || []).some((s) => s.done))
 
@@ -1194,7 +1188,10 @@ export default function App() {
       // any backfilled/past-day Finish regardless of its own partial state) resets done/typed —
       // a future fresh session should start unticked, carrying forward only the reference
       // numbers and set count, never "already done" checkmarks from a session that's over.
-      const updatedSets = sessionDate === null && isPartial
+      // Checked by date rather than `sessionDate === null` — reopening today's own
+      // already-finished session also sets sessionDate to a real (but still-today) timestamp.
+      const isToday = localDateStr(dateMs) === localDateStr(Date.now())
+      const updatedSets = isToday && isPartial
         ? (activeSets[ex] || []).map((s) => ({
             ...s,
             lastW: s.typed && s.w ? s.w : s.lastW,
@@ -2623,14 +2620,9 @@ export default function App() {
                 const pct = isDoneToday
                   ? getSessPct(dayName, today.getTime() - (todayMonIdx - viewIdx) * 86400000)
                   : 0
-                // Only fall back to the live, dateless wSets buffer when viewing today —
-                // a past day with nothing persisted should never show today's leftover progress.
-                const { tot, done } = isViewingPast ? { tot: 0, done: 0 } : getSessSetCounts(dayName)
-                const inProgress = !isViewingPast && done > 0 && !isDoneToday
-                const remaining = isViewingPast
-                  ? 0
-                  : exNames.filter((ex) => (wSets[ex] || []).every((s) => !s.done)).length
-                const barPct = isDoneToday ? pct : tot > 0 ? Math.round((done / tot) * 100) : 0
+                // A day shows no completion status at all until it's actually been finished —
+                // live unsaved ticks in wSets shouldn't surface here just because you started.
+                const barPct = isDoneToday ? pct : 0
                 const showBar = barPct > 0
                 const barColor = isFullToday ? 'var(--green)' : 'var(--orange)'
                 const subtitle = exNames.slice(0, 3).join(' · ') + (exNames.length > 3 ? ' …' : '')
@@ -2724,12 +2716,7 @@ export default function App() {
                           )}
                         </div>
                         <div className="dc-right">
-                          {inProgress && remaining > 0 && (
-                            <span className="dc-remaining">{remaining} remaining</span>
-                          )}
-                          {!inProgress && !isPartialToday && (
-                            <span className="dc-last">{getLastTrained(dayName)}</span>
-                          )}
+                          {!isDoneToday && <span className="dc-last">{getLastTrained(dayName)}</span>}
                           <div style={{ color: 'var(--ink3)', display: 'flex' }}>{TI.chevron}</div>
                         </div>
                       </div>
@@ -3242,7 +3229,7 @@ export default function App() {
                                   <div className="hist-set-row" key={si}>
                                     <div className="hist-set-n">Set {si + 1}</div>
                                     <div className="hist-set-val">
-                                      {s.w || s.done ? `${s.w} ${units} × ${s.r} reps` : '—'}
+                                      {s.done ? `${s.w} ${units} × ${s.r} reps` : '—'}
                                     </div>
                                   </div>
                                 ))}
