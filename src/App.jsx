@@ -6,6 +6,7 @@ import { MiniGraph } from './components/MiniGraph'
 import { WeightChart } from './components/WeightChart'
 import { CalendarView } from './components/CalendarView'
 import { WheelPicker } from './components/WheelPicker'
+import { exportHistoryPdf } from './exportHistoryPdf'
 
 /* ── Contextual line ── */
 const CtxLine = ({ text, orange }) => (
@@ -815,15 +816,10 @@ export default function App() {
   const [notifEnabled, setNotif] = useState(false)
   const [toast, setToast] = useState(null)
   const toastRef = useRef(null)
-  const [progSubTab, setProgSubTab] = useState('strength')
   const [progRangeStrength, setProgRangeStrength] = useState('All')
   const [progRangeHistory, setProgRangeHistory] = useState('All')
   const [progExCat, setProgExCat] = useState(null)
   const [expandedStr, setExpStr] = useState({})
-  const progScrollRef = useRef(null)
-  useEffect(() => {
-    if (progScrollRef.current) progScrollRef.current.scrollTop = 0
-  }, [progSubTab])
 
   // Persist guest data locally so it survives page reloads / OAuth redirects
   useEffect(() => {
@@ -1069,17 +1065,18 @@ export default function App() {
     return `${b.w}${units}×${b.r}`
   }
 
-  const getSessPct = (dayName) => {
-    const todayKey = localDateStr(Date.now())
-    const completedToday = sessionLog.find(
-      (s) => s.dayName === dayName && localDateStr(s.date) === todayKey,
-    )
-    if (completedToday) {
-      const totalSaved = completedToday.exercises.reduce((a, ex) => a + ex.sets.length, 0)
+  const getSessPct = (dayName, dateMs = Date.now()) => {
+    const dateKey = localDateStr(dateMs)
+    const completed = sessionLog.find((s) => s.dayName === dayName && localDateStr(s.date) === dateKey)
+    if (completed) {
+      const totalSaved = completed.exercises.reduce((a, ex) => a + ex.sets.length, 0)
       const totalExpected = getDayExs(dayName).reduce((a, ex) => a + (wSets[ex]?.length || 0), 0)
       if (totalExpected === 0) return 100
       return Math.min(100, Math.round((totalSaved / totalExpected) * 100))
     }
+    // Only "today" is allowed to fall back to the live, dateless wSets buffer —
+    // a past day with no saved session has nothing in progress by definition.
+    if (dateKey !== localDateStr(Date.now())) return 0
     const exs = getDayExs(dayName)
     const tot = exs.reduce((a, ex) => a + (wSets[ex]?.length || 0), 0)
     const done = exs.reduce((a, ex) => a + (wSets[ex]?.filter((s) => s.done).length || 0), 0)
@@ -2093,16 +2090,15 @@ export default function App() {
         const freshWSets = {}
         exNames.forEach((ex) => {
           const last = getLastForEx(ex, completedToday.id, remainingLog)
-          freshWSets[ex] = [
-            {
-              w: '',
-              r: '',
-              done: false,
-              lastW: last ? last.w : '—',
-              lastR: last ? last.r : '—',
-              typed: false,
-            },
-          ]
+          const setCount = (wSets[ex] || []).length || 1
+          freshWSets[ex] = Array.from({ length: setCount }, () => ({
+            w: '',
+            r: '',
+            done: false,
+            lastW: last ? last.w : '—',
+            lastR: last ? last.r : '—',
+            typed: false,
+          }))
         })
         if (user) {
           for (const ex of exNames) await saveWorkoutState(ex, freshWSets[ex])
@@ -2125,6 +2121,7 @@ export default function App() {
       }
       setCollapsedDone({})
       showToast(`${dayName} reset`)
+      setSessionScreen(null)
     }
     return (
       <div className="app">
@@ -2385,7 +2382,9 @@ export default function App() {
                   )
                 : null
               const isPartialDay = done && todaySessEntry?.partial
-              const partialPct = isPartialDay ? getSessPct(trainedSess) : 100
+              const partialPct = isPartialDay
+                ? getSessPct(trainedSess, today.getTime() - (todayMonIdx - i) * 86400000)
+                : 100
               const showCard = isToday || isViewing
               const dateColor = done
                 ? isPartialDay
@@ -2518,12 +2517,16 @@ export default function App() {
                   : null
                 const isPartialToday = isDoneToday && todaySess?.partial
                 const isFullToday = isDoneToday && !isPartialToday
-                const pct = isDoneToday ? getSessPct(dayName) : 0
-                const { tot, done } = getSessSetCounts(dayName)
-                const inProgress = done > 0 && !isDoneToday
-                const remaining = exNames.filter((ex) =>
-                  (wSets[ex] || []).every((s) => !s.done),
-                ).length
+                const pct = isDoneToday
+                  ? getSessPct(dayName, today.getTime() - (todayMonIdx - viewIdx) * 86400000)
+                  : 0
+                // Only fall back to the live, dateless wSets buffer when viewing today —
+                // a past day with nothing persisted should never show today's leftover progress.
+                const { tot, done } = isViewingPast ? { tot: 0, done: 0 } : getSessSetCounts(dayName)
+                const inProgress = !isViewingPast && done > 0 && !isDoneToday
+                const remaining = isViewingPast
+                  ? 0
+                  : exNames.filter((ex) => (wSets[ex] || []).every((s) => !s.done)).length
                 const barPct = isDoneToday ? pct : tot > 0 ? Math.round((done / tot) * 100) : 0
                 const showBar = barPct > 0
                 const barColor = isFullToday ? 'var(--green)' : 'var(--orange)'
@@ -2804,11 +2807,8 @@ export default function App() {
           )
 
           return (
-            <div className="prog-scroll" ref={progScrollRef}>
-              <div className="prog-hdr-row u0">
-                <div className="lbl" style={{ marginBottom: 0 }}>
-                  Progress
-                </div>
+            <div className="prog-scroll">
+              <div className="prog-hdr-row u0" style={{ justifyContent: 'flex-end' }}>
                 <div className="prog-month">{monthLabel}</div>
               </div>
 
@@ -2847,25 +2847,23 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Segmented control */}
-              <div className="seg-ctrl u1">
-                {[
-                  { id: 'strength', label: 'Strength' },
-                  { id: 'calendar', label: 'Calendar' },
-                  { id: 'history', label: 'History' },
-                ].map((s) => (
-                  <div
-                    key={s.id}
-                    className={`seg-opt${progSubTab === s.id ? ' on' : ''}`}
-                    onClick={() => setProgSubTab(s.id)}
-                  >
-                    {s.label}
-                  </div>
-                ))}
+              <div className="lbl u2" style={{ marginTop: 4 }}>
+                Calendar
+              </div>
+              <div
+                className="u2"
+                style={{
+                  background: 'var(--white)',
+                  border: '1.5px solid var(--border)',
+                  borderRadius: 16,
+                  padding: '16px',
+                  boxShadow: 'var(--sh)',
+                }}
+              >
+                <CalendarView sessionLog={sessionLog} />
               </div>
 
-              {progSubTab === 'strength' && (
-                <div className="u2">
+              <div className="u2">
                   <div className="range-row">
                     <div className="lbl" style={{ marginBottom: 0 }}>
                       Strength curves
@@ -3005,25 +3003,8 @@ export default function App() {
                     })
                   )}
                 </div>
-              )}
 
-              {progSubTab === 'calendar' && (
-                <div
-                  className="u2"
-                  style={{
-                    background: 'var(--white)',
-                    border: '1.5px solid var(--border)',
-                    borderRadius: 16,
-                    padding: '16px',
-                    boxShadow: 'var(--sh)',
-                  }}
-                >
-                  <CalendarView sessionLog={sessionLog} />
-                </div>
-              )}
-
-              {progSubTab === 'history' && (
-                <div className="u2">
+              <div className="u2">
                   <div className="range-row">
                     <div className="lbl" style={{ marginBottom: 0 }}>
                       Recent sessions
@@ -3040,6 +3021,15 @@ export default function App() {
                       ))}
                     </div>
                   </div>
+                  {rangeFilteredSessions.length > 0 && (
+                    <div
+                      className="range-pill on"
+                      style={{ display: 'inline-block', marginBottom: 12, cursor: 'pointer' }}
+                      onClick={() => exportHistoryPdf(rangeFilteredSessions, units)}
+                    >
+                      Export PDF
+                    </div>
+                  )}
                   {rangeFilteredSessions.length === 0 ? (
                     <div className="empty-state">
                       <div className="empty-state-icon">📋</div>
@@ -3089,7 +3079,6 @@ export default function App() {
                     ))
                   )}
                 </div>
-              )}
             </div>
           )
         })()}
