@@ -1051,8 +1051,11 @@ export default function App() {
     setPrograms((p) =>
       p.map((prog) => (prog.exs[day] ? { ...prog, exs: { ...prog.exs, [day]: newList } } : prog)),
     )
-    if (!wSets[trimmed])
-      setWSets((pw) => ({
+    // Seed whichever buffer is currently live — wSets for a fresh/live session, or the
+    // ephemeral pastEditSets buffer when reviewing a past/reopened session — so a newly
+    // added exercise gets its first set row immediately instead of only a bare "Add Set".
+    if (!activeSets[trimmed])
+      setActiveSets((pw) => ({
         ...pw,
         [trimmed]: [{ w: '', r: '', done: false, lastW: '—', lastR: '—', typed: false }],
       }))
@@ -2071,12 +2074,29 @@ export default function App() {
   if (sessionScreen !== null) {
     const dayName = sessionScreen
     const isPastEdit = sessionDate !== null
+    const completedSess = sessionLog.find(
+      (s) => s.dayName === dayName && localDateStr(s.date) === localDateStr(sessionDate ?? Date.now()),
+    )
     // Shadows the top-level getSessSetCounts (which Home's day-card list also calls and must
     // keep reading the real wSets) so this screen's own counters reflect activeSets instead.
+    // For a fully-completed saved session, drop exercises that were never part of the saved
+    // record and haven't been touched in this review — those only exist here because the
+    // day's template grew after logging (e.g. a new exercise added on a later day), and
+    // counting their untouched, never-logged sets is what made a genuinely 100% session look
+    // partial. An exercise that *was* saved, or that you've actually edited just now (Add Set,
+    // typing, ticking), still counts live as normal.
     const getSessSetCounts = (dn) => {
       const exs = getDayExs(dn)
-      const tot = exs.reduce((a, ex) => a + (activeSets[ex]?.length || 0), 0)
-      const done = exs.reduce((a, ex) => a + (activeSets[ex]?.filter((s) => s.done).length || 0), 0)
+      const relevant =
+        completedSess && !completedSess.partial
+          ? exs.filter(
+              (ex) =>
+                completedSess.exercises.some((e) => e.name === ex) ||
+                (activeSets[ex] || []).some((s) => s.typed || s.done),
+            )
+          : exs
+      const tot = relevant.reduce((a, ex) => a + (activeSets[ex]?.length || 0), 0)
+      const done = relevant.reduce((a, ex) => a + (activeSets[ex]?.filter((s) => s.done).length || 0), 0)
       return { tot, done }
     }
     const exNames = getDayExs(dayName)
