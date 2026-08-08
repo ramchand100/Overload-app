@@ -280,7 +280,7 @@ const S = `
   /* Progress header + hero */
   .prog-hdr-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px}
   .prog-month{font-size:13px;color:var(--ink3);font-weight:600}
-  .prog-hero{background:var(--ch);border-radius:20px;padding:22px 20px;position:relative;overflow:hidden;margin-bottom:14px}
+  .prog-hero{background:var(--ch);border-radius:20px;padding:22px 20px;position:relative;overflow:hidden;margin-bottom:14px;flex-shrink:0}
   .prog-hero-blob{position:absolute;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.06);top:-70px;right:-60px}
   .prog-hero-lbl{font-size:11px;color:rgba(255,255,255,.7);font-weight:700;text-transform:uppercase;letter-spacing:1.4px;margin-bottom:8px;position:relative}
   .prog-hero-title{font-size:28px;font-weight:800;color:white;letter-spacing:-.5px;position:relative;margin-bottom:6px;line-height:1.1}
@@ -294,8 +294,8 @@ const S = `
   .seg-opt{flex:1;text-align:center;padding:9px 0;border-radius:100px;font-size:13px;font-weight:700;color:var(--ink3);cursor:pointer;transition:all .15s}
   .seg-opt.on{background:var(--white);color:var(--ch);box-shadow:var(--sh)}
   /* Range pills (Week/1M/6M/1Y/All) */
-  .range-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px}
-  .range-pills{display:flex;gap:4px;overflow-x:auto}
+  .range-row{display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin-bottom:12px}
+  .range-pills{display:flex;flex-wrap:wrap;gap:4px}
   .range-pill{flex-shrink:0;padding:5px 11px;border-radius:100px;font-size:12px;font-weight:700;color:var(--ink3);background:var(--surface);cursor:pointer;white-space:nowrap}
   .range-pill.on{background:var(--ch);color:white}
   /* Category tabs (Push/Pull/Legs) */
@@ -796,6 +796,14 @@ export default function App() {
       return {}
     }
   })
+  // null = editing today; otherwise the ms timestamp of the past day being backfilled
+  const [sessionDate, setSessionDate] = useState(null)
+  // Ephemeral scratch buffer for backfilling a past day — never persisted, discarded if
+  // the session screen is left without hitting Finish. Keeps past-day edits from ever
+  // touching the real (dateless) wSets buffer that represents today's live state.
+  const [pastEditSets, setPastEditSets] = useState({})
+  const activeSets = sessionDate !== null ? pastEditSets : wSets
+  const setActiveSets = sessionDate !== null ? setPastEditSets : setWSets
   const [tab, setTab] = useState('home')
   const [sessionScreen, setSessionScreen] = useState(null)
   const [editingDay, setEditDay] = useState(null)
@@ -986,7 +994,7 @@ export default function App() {
   }
 
   const addSet = (ex) =>
-    setWSets((p) => {
+    setActiveSets((p) => {
       const sets = p[ex] || []
       const prev = sets[sets.length - 1]
       return {
@@ -1005,21 +1013,22 @@ export default function App() {
       }
     })
   const removeSet = (ex, idx) =>
-    setWSets((p) => {
+    setActiveSets((p) => {
       const s = [...(p[ex] || [])]
       if (s.length <= 1) return p
       s.splice(idx, 1)
       return { ...p, [ex]: s }
     })
   const updateSet = (ex, i, f, v) =>
-    setWSets((p) => {
+    setActiveSets((p) => {
       const s = [...(p[ex] || [])]
       s[i] = { ...s[i], [f]: v, typed: true }
       return { ...p, [ex]: s }
     })
   const tickSet = (ex, i) =>
-    setWSets((p) => {
+    setActiveSets((p) => {
       const s = [...(p[ex] || [])]
+      if (!s[i].done && !s[i].typed) return p
       s[i] = { ...s[i], done: !s[i].done }
       const next = { ...p, [ex]: s }
       if (!s[i].done && s.every((set) => set.done))
@@ -1050,16 +1059,16 @@ export default function App() {
   }
   const isPR = (ex, si, w, typed) => {
     if (!typed || !w) return false
-    const lw = wSets[ex]?.[si]?.lastW
+    const lw = activeSets[ex]?.[si]?.lastW
     if (!lw || lw === '—' || lw === 'BW') return false
     return parseFloat(w) > parseFloat(lw)
   }
   const isExDone = (ex) => {
-    const s = wSets[ex] || []
+    const s = activeSets[ex] || []
     return s.length > 0 && s.every((s) => s.done)
   }
   const getBestSet = (ex) => {
-    const sets = (wSets[ex] || []).filter((s) => s.done && s.typed && s.w)
+    const sets = (activeSets[ex] || []).filter((s) => s.done && s.typed && s.w)
     if (!sets.length) return null
     const b = sets.reduce((a, s) => (parseFloat(s.w) > parseFloat(a.w) ? s : a), sets[0])
     return `${b.w}${units}×${b.r}`
@@ -1089,25 +1098,25 @@ export default function App() {
     return { tot, done }
   }
   const anyDone = (dayName) =>
-    getDayExs(dayName).some((ex) => (wSets[ex] || []).some((s) => s.done))
+    getDayExs(dayName).some((ex) => (activeSets[ex] || []).some((s) => s.done))
 
   // Finishing a workout: for signed-in users, the DB write happens first and the UI only reflects
   // success once Supabase confirms it (backend is the source of truth) — on failure we show an
   // error and leave everything as-is rather than silently marking it done. Guest mode has no
   // backend to confirm against, so it stays optimistic/local-only.
-  const doFinish = async (dayName) => {
+  const doFinish = async (dayName, dateMs = Date.now()) => {
     const exNames = getDayExs(dayName)
-    const untouched = exNames.filter((ex) => (wSets[ex] || []).every((s) => !s.done))
+    const untouched = exNames.filter((ex) => (activeSets[ex] || []).every((s) => !s.done))
     const isPartial = untouched.length > 0
     const sessExs = exNames
       .map((ex) => ({
         name: ex,
-        sets: (wSets[ex] || [])
+        sets: (activeSets[ex] || [])
           .filter((s) => s.typed || s.done)
           .map((s) => ({ w: s.w || s.lastW, r: s.r || s.lastR })),
       }))
       .filter((e) => e.sets.length > 0)
-    const sessionPayload = { dayName, exercises: sessExs, partial: isPartial }
+    const sessionPayload = { dayName, exercises: sessExs, partial: isPartial, date: dateMs }
 
     if (user) {
       const { error } = await saveSession(sessionPayload)
@@ -1117,11 +1126,11 @@ export default function App() {
       }
       // saveSession already updated the hook's own state; the sync effect mirrors it into local state.
     } else {
-      const todayKey = localDateStr(Date.now())
+      const dateKey = localDateStr(dateMs)
       const existingIdx = sessionLog.findIndex(
-        (s) => s.dayName === dayName && localDateStr(s.date) === todayKey,
+        (s) => s.dayName === dayName && localDateStr(s.date) === dateKey,
       )
-      const newSession = { id: Date.now(), date: Date.now(), ...sessionPayload }
+      const newSession = { id: Date.now(), ...sessionPayload }
       if (existingIdx >= 0) {
         setSessionLog((p) => {
           const u = [...p]
@@ -1129,19 +1138,19 @@ export default function App() {
           return u
         })
       } else {
-        setSessionLog((p) => [newSession, ...p])
+        setSessionLog((p) => [...p, newSession].sort((a, b) => b.date - a.date))
       }
     }
 
     const nextWSets = {}
     for (const ex of exNames) {
       const updatedSets = isPartial
-        ? (wSets[ex] || []).map((s) => ({
+        ? (activeSets[ex] || []).map((s) => ({
             ...s,
             lastW: s.typed && s.w ? s.w : s.lastW,
             lastR: s.typed && s.r ? s.r : s.lastR,
           }))
-        : (wSets[ex] || []).map((s) => ({
+        : (activeSets[ex] || []).map((s) => ({
             ...s,
             done: false,
             lastW: s.typed && s.w ? s.w : s.lastW,
@@ -2049,6 +2058,15 @@ export default function App() {
   /* ════ SESSION SCREEN ════ */
   if (sessionScreen !== null) {
     const dayName = sessionScreen
+    const isPastEdit = sessionDate !== null
+    // Shadows the top-level getSessSetCounts (which Home's day-card list also calls and must
+    // keep reading the real wSets) so this screen's own counters reflect activeSets instead.
+    const getSessSetCounts = (dn) => {
+      const exs = getDayExs(dn)
+      const tot = exs.reduce((a, ex) => a + (activeSets[ex]?.length || 0), 0)
+      const done = exs.reduce((a, ex) => a + (activeSets[ex]?.filter((s) => s.done).length || 0), 0)
+      return { tot, done }
+    }
     const exNames = getDayExs(dayName)
     const isEdit = editingDay === dayName
     const { tot, done } = getSessSetCounts(dayName)
@@ -2133,6 +2151,7 @@ export default function App() {
               className="back-btn"
               onClick={() => {
                 setSessionScreen(null)
+                setSessionDate(null)
                 setEditDay(null)
                 setCollapsedDone({})
               }}
@@ -2227,7 +2246,7 @@ export default function App() {
               </div>
             ) : (
               exNames.map((ex) => {
-                const sets = wSets[ex] || []
+                const sets = activeSets[ex] || []
                 const exDone = isExDone(ex)
                 const isCollapsed = collapsedDone[ex] && exDone
                 const muscleTag = MUSCLE_TAGS[ex]
@@ -2323,7 +2342,7 @@ export default function App() {
             )}
           </div>
           <div className="sess-footer">
-            {!isEdit && (
+            {!isEdit && !isPastEdit && (
               <button className="sess-edit-btn" onClick={handleReset}>
                 Reset
               </button>
@@ -2338,8 +2357,9 @@ export default function App() {
                 className="sess-finish-btn"
                 disabled={!hasAnyDone}
                 onClick={() => {
-                  doFinish(dayName)
+                  doFinish(dayName, sessionDate ?? Date.now())
                   setSessionScreen(null)
+                  setSessionDate(null)
                   setCollapsedDone({})
                 }}
               >
@@ -2532,7 +2552,47 @@ export default function App() {
                 const barColor = isFullToday ? 'var(--green)' : 'var(--orange)'
                 const subtitle = exNames.slice(0, 3).join(' · ') + (exNames.length > 3 ? ' …' : '')
                 return (
-                  <div key={dayName} className="day-card" onClick={() => setSessionScreen(dayName)}>
+                  <div
+                    key={dayName}
+                    className="day-card"
+                    onClick={() => {
+                      if (viewIdx === todayMonIdx) {
+                        setSessionDate(null)
+                        setSessionScreen(dayName)
+                        return
+                      }
+                      const dateMs = today.getTime() - (todayMonIdx - viewIdx) * 86400000
+                      const seed = {}
+                      exNames.forEach((ex) => {
+                        const savedEx = todaySess?.exercises.find((e) => e.name === ex)
+                        if (savedEx) {
+                          seed[ex] = savedEx.sets.map((s) => ({
+                            w: s.w,
+                            r: s.r,
+                            done: true,
+                            lastW: s.w,
+                            lastR: s.r,
+                            typed: true,
+                          }))
+                        } else {
+                          const setCount = (wSets[ex] || []).length || 1
+                          const lastW = wSets[ex]?.[0]?.lastW ?? '—'
+                          const lastR = wSets[ex]?.[0]?.lastR ?? '—'
+                          seed[ex] = Array.from({ length: setCount }, () => ({
+                            w: '',
+                            r: '',
+                            done: false,
+                            lastW,
+                            lastR,
+                            typed: false,
+                          }))
+                        }
+                      })
+                      setPastEditSets(seed)
+                      setSessionDate(dateMs)
+                      setSessionScreen(dayName)
+                    }}
+                  >
                     <div className="day-card-body">
                       <div className="dc-top">
                         <div className="dc-left">
@@ -2865,7 +2925,7 @@ export default function App() {
 
               <div className="u2">
                   <div className="range-row">
-                    <div className="lbl" style={{ marginBottom: 0 }}>
+                    <div className="lbl">
                       Strength curves
                     </div>
                     <div className="range-pills">
@@ -3004,9 +3064,10 @@ export default function App() {
                   )}
                 </div>
 
-              <div className="u2">
+              <div className="u2" style={{ marginTop: 20 }}>
+                  <div style={{ height: 1, background: 'var(--border)', marginBottom: 20 }} />
                   <div className="range-row">
-                    <div className="lbl" style={{ marginBottom: 0 }}>
+                    <div className="lbl">
                       Recent sessions
                     </div>
                     <div className="range-pills">
