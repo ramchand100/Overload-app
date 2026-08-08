@@ -127,11 +127,13 @@ export function useData(user) {
     return { error }
   }
 
-  // Save a session — DB write happens first; caller should only update UI on success
+  // Save a session — DB write happens first; caller should only update UI on success.
+  // session.date lets the caller target a specific past day (backfilling); defaults to now.
   const saveSession = async (session) => {
-    const todayKey = localDateKey(Date.now())
+    const dateMs = session.date ?? Date.now()
+    const dateKey = localDateKey(dateMs)
     const existing = sessionLog.find(
-      (s) => s.dayName === session.dayName && localDateKey(s.date) === todayKey,
+      (s) => s.dayName === session.dayName && localDateKey(s.date) === dateKey,
     )
     if (existing) {
       const { error } = await supabase
@@ -152,20 +154,23 @@ export function useData(user) {
           day_name: session.dayName,
           exercises: session.exercises,
           partial: session.partial,
+          logged_at: new Date(dateMs).toISOString(),
         })
         .select()
         .single()
       if (data)
-        setSessionLog((p) => [
-          {
-            id: data.id,
-            date: new Date(data.logged_at).getTime(),
-            dayName: data.day_name,
-            exercises: data.exercises,
-            partial: data.partial,
-          },
-          ...p,
-        ])
+        setSessionLog((p) =>
+          [
+            {
+              id: data.id,
+              date: new Date(data.logged_at).getTime(),
+              dayName: data.day_name,
+              exercises: data.exercises,
+              partial: data.partial,
+            },
+            ...p,
+          ].sort((a, b) => b.date - a.date),
+        )
       return { error, data }
     }
   }
