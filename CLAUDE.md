@@ -47,3 +47,15 @@ Tests mock `./supabase` directly (see `useAuth.test.js`, `useData.test.js`) rath
 When passing a `user` object into `renderHook(() => useData(user))`, keep the object reference stable across renders (define it once outside the hook callback) — `useData`'s effect depends on `[user]` by reference, so a fresh object literal on every render call retriggers the load effect indefinitely.
 
 `App.test.jsx` mocks `./useAuth` and `./useData` with explicit factories (`vi.mock('./useAuth', () => ({ useAuth: vi.fn() }))`) rather than bare `vi.mock('./useAuth')`. A bare call triggers Vitest's automock, which still imports the real module to infer its shape — and `useAuth.js`/`useData.js` both import `src/supabase.js`, which throws (`supabaseUrl is required`) if `createClient` runs without the env vars set.
+
+## Behavioral guidelines
+
+These bias toward caution over speed. For trivial tasks, use judgment.
+
+**1. Think before coding.** Don't assume, don't hide confusion. State assumptions explicitly; if uncertain, ask. If multiple interpretations exist, present them rather than picking silently. If a simpler approach exists, say so. If something is unclear, stop and ask instead of guessing.
+
+**2. Simplicity first.** Minimum code that solves the problem — nothing speculative. No features beyond what was asked, no abstractions for single-use code, no "flexibility" that wasn't requested, no error handling for impossible scenarios. If it could be a third the size, rewrite it.
+
+**3. Surgical changes.** Touch only what the task requires. Don't "improve" adjacent code, comments, or formatting; don't refactor things that aren't broken; match existing style even if you'd do it differently. When your own changes create orphaned imports/variables/functions, remove them — but leave pre-existing dead code alone and just mention it. Every changed line should trace directly to the request.
+
+**4. Goal-driven execution, verify before reporting done.** Turn the task into a verifiable goal ("fix the bug" → reproduce it, then confirm it's fixed; "add X" → confirm X works without breaking what was already there) and check that goal before saying you're finished — don't just report success because the code compiles. For multi-step work, state a brief plan up front (step → how it'll be verified) so you can loop independently instead of needing constant clarification.
