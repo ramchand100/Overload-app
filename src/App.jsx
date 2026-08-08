@@ -2094,16 +2094,15 @@ export default function App() {
         const freshWSets = {}
         exNames.forEach((ex) => {
           const last = getLastForEx(ex, completedToday.id, remainingLog)
-          freshWSets[ex] = [
-            {
-              w: '',
-              r: '',
-              done: false,
-              lastW: last ? last.w : '—',
-              lastR: last ? last.r : '—',
-              typed: false,
-            },
-          ]
+          const setCount = (wSets[ex] || []).length || 1
+          freshWSets[ex] = Array.from({ length: setCount }, () => ({
+            w: '',
+            r: '',
+            done: false,
+            lastW: last ? last.w : '—',
+            lastR: last ? last.r : '—',
+            typed: false,
+          }))
         })
         if (user) {
           for (const ex of exNames) await saveWorkoutState(ex, freshWSets[ex])
@@ -2126,6 +2125,7 @@ export default function App() {
       }
       setCollapsedDone({})
       showToast(`${dayName} reset`)
+      setSessionScreen(null)
     }
     return (
       <div className="app">
