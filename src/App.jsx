@@ -295,8 +295,8 @@ const S = `
   .seg-opt.on{background:var(--white);color:var(--ch);box-shadow:var(--sh)}
   /* Range pills (Week/1M/6M/1Y/All) */
   .range-row{display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin-bottom:12px}
-  .range-pills{display:flex;flex-wrap:wrap;gap:4px}
-  .range-pill{flex-shrink:0;padding:5px 11px;border-radius:100px;font-size:12px;font-weight:700;color:var(--ink3);background:var(--surface);cursor:pointer;white-space:nowrap}
+  .range-pills{display:flex;flex-wrap:wrap;gap:2px;background:var(--surface);border-radius:100px;padding:3px}
+  .range-pill{flex-shrink:0;padding:5px 11px;border-radius:100px;font-size:12px;font-weight:700;color:var(--ink3);background:transparent;cursor:pointer;white-space:nowrap}
   .range-pill.on{background:var(--ch);color:white}
   /* Category tabs (Push/Pull/Legs) */
   .cat-tabs{display:flex;background:var(--white);border:1.5px solid var(--border);border-radius:14px;box-shadow:var(--sh);margin-bottom:12px;overflow:hidden}
@@ -2923,22 +2923,29 @@ export default function App() {
                 <CalendarView sessionLog={sessionLog} />
               </div>
 
-              <div className="u2">
-                  <div className="range-row">
-                    <div className="lbl">
-                      Strength curves
-                    </div>
-                    <div className="range-pills">
-                      {['Week', '1M', '6M', '1Y', 'All'].map((r) => (
-                        <div
-                          key={r}
-                          className={`range-pill${progRangeStrength === r ? ' on' : ''}`}
-                          onClick={() => setProgRangeStrength(r)}
-                        >
-                          {r}
-                        </div>
-                      ))}
-                    </div>
+              <div className="lbl u2" style={{ marginTop: 4 }}>
+                Strength curves
+              </div>
+              <div
+                className="u2"
+                style={{
+                  background: 'var(--white)',
+                  border: '1.5px solid var(--border)',
+                  borderRadius: 16,
+                  padding: '16px',
+                  boxShadow: 'var(--sh)',
+                }}
+              >
+                  <div className="range-pills" style={{ marginBottom: 12 }}>
+                    {['Week', '1M', '6M', '1Y', 'All'].map((r) => (
+                      <div
+                        key={r}
+                        className={`range-pill${progRangeStrength === r ? ' on' : ''}`}
+                        onClick={() => setProgRangeStrength(r)}
+                      >
+                        {r}
+                      </div>
+                    ))}
                   </div>
                   {categories.length > 0 && (
                     <div className="cat-tabs">
