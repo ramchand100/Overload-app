@@ -997,17 +997,19 @@ export default function App() {
     setActiveSets((p) => {
       const sets = p[ex] || []
       const prev = sets[sets.length - 1]
+      const filledW = prev && prev.lastW !== '—' ? prev.lastW : ''
+      const filledR = prev && prev.lastR !== '—' ? prev.lastR : ''
       return {
         ...p,
         [ex]: [
           ...sets,
           {
-            w: prev && prev.lastW !== '—' ? prev.lastW : '',
-            r: prev && prev.lastR !== '—' ? prev.lastR : '',
+            w: filledW,
+            r: filledR,
             done: false,
             lastW: prev?.lastW || '—',
             lastR: prev?.lastR || '—',
-            typed: false,
+            typed: !!filledW,
           },
         ],
       }
@@ -1142,31 +1144,37 @@ export default function App() {
       }
     }
 
-    const nextWSets = {}
-    for (const ex of exNames) {
-      const updatedSets = isPartial
-        ? (activeSets[ex] || []).map((s) => ({
-            ...s,
-            lastW: s.typed && s.w ? s.w : s.lastW,
-            lastR: s.typed && s.r ? s.r : s.lastR,
-          }))
-        : (activeSets[ex] || []).map((s) => ({
-            ...s,
-            done: false,
-            lastW: s.typed && s.w ? s.w : s.lastW,
-            lastR: s.typed && s.r ? s.r : s.lastR,
-            w: s.typed && s.w ? s.w : s.lastW !== '—' ? s.lastW : '',
-            r: s.typed && s.r ? s.r : s.lastR !== '—' ? s.lastR : '',
-            typed: false,
-          }))
-      nextWSets[ex] = updatedSets
-      if (user) {
-        const { error } = await saveWorkoutState(ex, updatedSets)
-        if (error) showToast(`Couldn't save ${ex} — try again`)
+    // Only sync the shared "last known weights" template when finishing today's own
+    // session — it exists to prefill your next real session, not to reflect whatever
+    // was just backfilled into history. A past-day Finish must never touch it, since
+    // it's keyed only by exercise name and shared by every day/date using that exercise.
+    if (sessionDate === null) {
+      const nextWSets = {}
+      for (const ex of exNames) {
+        const updatedSets = isPartial
+          ? (activeSets[ex] || []).map((s) => ({
+              ...s,
+              lastW: s.typed && s.w ? s.w : s.lastW,
+              lastR: s.typed && s.r ? s.r : s.lastR,
+            }))
+          : (activeSets[ex] || []).map((s) => ({
+              ...s,
+              done: false,
+              lastW: s.typed && s.w ? s.w : s.lastW,
+              lastR: s.typed && s.r ? s.r : s.lastR,
+              w: s.typed && s.w ? s.w : s.lastW !== '—' ? s.lastW : '',
+              r: s.typed && s.r ? s.r : s.lastR !== '—' ? s.lastR : '',
+              typed: false,
+            }))
+        nextWSets[ex] = updatedSets
+        if (user) {
+          const { error } = await saveWorkoutState(ex, updatedSets)
+          if (error) showToast(`Couldn't save ${ex} — try again`)
+        }
       }
+      if (!user) setWSets((p) => ({ ...p, ...nextWSets }))
+      // Signed-in: saveWorkoutState already updated the hook's state; the sync effect mirrors it locally.
     }
-    if (!user) setWSets((p) => ({ ...p, ...nextWSets }))
-    // Signed-in: saveWorkoutState already updated the hook's state; the sync effect mirrors it locally.
 
     if (!isPartial) {
       setCollapsedDone({})
@@ -2090,46 +2098,54 @@ export default function App() {
       return null
     }
     const handleReset = async () => {
-      const todayKey = localDateStr(Date.now())
-      const completedToday = sessionLog.find(
-        (s) => s.dayName === dayName && localDateStr(s.date) === todayKey,
+      const dateMs = sessionDate ?? Date.now()
+      const dateKey = localDateStr(dateMs)
+      const completed = sessionLog.find(
+        (s) => s.dayName === dayName && localDateStr(s.date) === dateKey,
       )
-      if (completedToday) {
-        // A session was already saved for today — actually clear it, not just the on-screen taps
+      if (completed) {
+        // A session was already saved for this date — actually clear it, not just the on-screen taps
         if (user) {
-          const { error } = await deleteSession(completedToday.id)
+          const { error } = await deleteSession(completed.id)
           if (error) {
             showToast("Couldn't reset — try again")
             return
           }
         }
-        const remainingLog = sessionLog.filter((s) => s.id !== completedToday.id)
+        const remainingLog = sessionLog.filter((s) => s.id !== completed.id)
         if (!user) setSessionLog(remainingLog)
-        const freshWSets = {}
+        const freshSets = {}
         exNames.forEach((ex) => {
-          const last = getLastForEx(ex, completedToday.id, remainingLog)
-          const setCount = (wSets[ex] || []).length || 1
-          freshWSets[ex] = Array.from({ length: setCount }, () => ({
-            w: '',
-            r: '',
+          const last = getLastForEx(ex, completed.id, remainingLog)
+          const setCount = (activeSets[ex] || []).length || 1
+          freshSets[ex] = Array.from({ length: setCount }, () => ({
+            w: last ? last.w : '',
+            r: last ? last.r : '',
             done: false,
             lastW: last ? last.w : '—',
             lastR: last ? last.r : '—',
-            typed: false,
+            typed: !!last,
           }))
         })
-        if (user) {
-          for (const ex of exNames) await saveWorkoutState(ex, freshWSets[ex])
-        } else setWSets((p) => ({ ...p, ...freshWSets }))
+        // A past-day reset must never touch the shared "last known weights" template —
+        // same principle as Finish (see doFinish) — so it only ever writes into the
+        // ephemeral pastEditSets buffer, not the real wSets/workout_state.
+        if (isPastEdit) {
+          setPastEditSets((p) => ({ ...p, ...freshSets }))
+        } else if (user) {
+          for (const ex of exNames) await saveWorkoutState(ex, freshSets[ex])
+        } else {
+          setWSets((p) => ({ ...p, ...freshSets }))
+        }
       } else {
-        // Nothing saved yet — just clear the unsaved taps on screen
-        setWSets((p) => {
+        // Nothing saved yet for this date — just clear the unsaved taps on screen
+        setActiveSets((p) => {
           const next = { ...p }
           exNames.forEach((ex) => {
             next[ex] = (p[ex] || []).map((s) => ({
               ...s,
               done: false,
-              typed: false,
+              typed: s.lastW !== '—',
               w: s.lastW !== '—' ? s.lastW : '',
               r: s.lastR !== '—' ? s.lastR : '',
             }))
@@ -2140,6 +2156,7 @@ export default function App() {
       setCollapsedDone({})
       showToast(`${dayName} reset`)
       setSessionScreen(null)
+      setSessionDate(null)
     }
     return (
       <div className="app">
@@ -2342,7 +2359,7 @@ export default function App() {
             )}
           </div>
           <div className="sess-footer">
-            {!isEdit && !isPastEdit && (
+            {!isEdit && (
               <button className="sess-edit-btn" onClick={handleReset}>
                 Reset
               </button>
