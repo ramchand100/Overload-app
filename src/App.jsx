@@ -1051,8 +1051,11 @@ export default function App() {
     setPrograms((p) =>
       p.map((prog) => (prog.exs[day] ? { ...prog, exs: { ...prog.exs, [day]: newList } } : prog)),
     )
-    if (!wSets[trimmed])
-      setWSets((pw) => ({
+    // Seed whichever buffer is currently live — wSets for a fresh/live session, or the
+    // ephemeral pastEditSets buffer when reviewing a past/reopened session — so a newly
+    // added exercise gets its first set row immediately instead of only a bare "Add Set".
+    if (!activeSets[trimmed])
+      setActiveSets((pw) => ({
         ...pw,
         [trimmed]: [{ w: '', r: '', done: false, lastW: '—', lastR: '—', typed: false }],
       }))
