@@ -46,7 +46,7 @@ export const exportHistoryPdf = (sessions, units) => {
       doc.setFontSize(10)
       ex.sets.forEach((s, i) => {
         ensureSpace(14)
-        const val = s.w || s.done ? `${s.w} ${units} x ${s.r} reps` : '—'
+        const val = s.done ? `${s.w} ${units} x ${s.r} reps` : '—'
         doc.text(`Set ${i + 1}: ${val}`, marginX + 20, y)
         y += 14
       })
