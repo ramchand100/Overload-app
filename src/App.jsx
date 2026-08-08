@@ -1080,6 +1080,10 @@ export default function App() {
     const dateKey = localDateStr(dateMs)
     const completed = sessionLog.find((s) => s.dayName === dayName && localDateStr(s.date) === dateKey)
     if (completed) {
+      // The session already recorded whether everything intended was done — trust that
+      // instead of recomputing a ratio against today's (possibly different) live set
+      // counts, which can make a fully completed day look partial.
+      if (!completed.partial) return 100
       const totalSaved = completed.exercises.reduce((a, ex) => a + ex.sets.length, 0)
       const totalExpected = getDayExs(dayName).reduce((a, ex) => a + (wSets[ex]?.length || 0), 0)
       if (totalExpected === 0) return 100
@@ -2573,7 +2577,12 @@ export default function App() {
                     key={dayName}
                     className="day-card"
                     onClick={() => {
-                      if (viewIdx === todayMonIdx) {
+                      // Reopening any already-fully-logged session (today's own, once
+                      // finished, or any past day) reviews/edits the real saved record via
+                      // the ephemeral buffer — only a fresh/in-progress today keeps using
+                      // the live wSets buffer directly.
+                      const reviewingSaved = viewIdx !== todayMonIdx || (isDoneToday && isFullToday)
+                      if (!reviewingSaved) {
                         setSessionDate(null)
                         setSessionScreen(dayName)
                         return
