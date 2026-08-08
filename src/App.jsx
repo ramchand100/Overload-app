@@ -1114,7 +1114,16 @@ export default function App() {
   // error and leave everything as-is rather than silently marking it done. Guest mode has no
   // backend to confirm against, so it stays optimistic/local-only.
   const doFinish = async (dayName, dateMs = Date.now()) => {
-    const exNames = getDayExs(dayName)
+    const dateKey = localDateStr(dateMs)
+    const existingSess = sessionLog.find(
+      (s) => s.dayName === dayName && localDateStr(s.date) === dateKey,
+    )
+    // Re-finishing a reopened session (a correction, or just re-confirming) must keep any
+    // exercise that was logged before but has since been removed from the day's template —
+    // otherwise it would silently vanish from history for good.
+    const exNames = existingSess
+      ? [...new Set([...getDayExs(dayName), ...existingSess.exercises.map((e) => e.name)])]
+      : getDayExs(dayName)
     const untouched = exNames.filter((ex) => (activeSets[ex] || []).every((s) => !s.done))
     const isPartial = untouched.length > 0
     const sessExs = exNames
@@ -1135,7 +1144,6 @@ export default function App() {
       }
       // saveSession already updated the hook's own state; the sync effect mirrors it into local state.
     } else {
-      const dateKey = localDateStr(dateMs)
       const existingIdx = sessionLog.findIndex(
         (s) => s.dayName === dayName && localDateStr(s.date) === dateKey,
       )
@@ -2077,6 +2085,15 @@ export default function App() {
     const completedSess = sessionLog.find(
       (s) => s.dayName === dayName && localDateStr(s.date) === localDateStr(sessionDate ?? Date.now()),
     )
+    const exNames = getDayExs(dayName)
+    // Reviewing a saved session must still show — and count — any exercise that was actually
+    // logged even if it's since been removed from the day's template, otherwise its real
+    // history silently disappears here. Edit mode (which manages the live program) and Reset
+    // (which intentionally starts a fresh session from the current template) deliberately keep
+    // using the plain `exNames` above instead.
+    const displayExNames = completedSess
+      ? [...new Set([...exNames, ...completedSess.exercises.map((e) => e.name)])]
+      : exNames
     // Shadows the top-level getSessSetCounts (which Home's day-card list also calls and must
     // keep reading the real wSets) so this screen's own counters reflect activeSets instead.
     // For a fully-completed saved session, drop exercises that were never part of the saved
@@ -2085,27 +2102,25 @@ export default function App() {
     // counting their untouched, never-logged sets is what made a genuinely 100% session look
     // partial. An exercise that *was* saved, or that you've actually edited just now (Add Set,
     // typing, ticking), still counts live as normal.
-    const getSessSetCounts = (dn) => {
-      const exs = getDayExs(dn)
+    const getSessSetCounts = () => {
       const relevant =
         completedSess && !completedSess.partial
-          ? exs.filter(
+          ? displayExNames.filter(
               (ex) =>
                 completedSess.exercises.some((e) => e.name === ex) ||
                 (activeSets[ex] || []).some((s) => s.typed || s.done),
             )
-          : exs
+          : displayExNames
       const tot = relevant.reduce((a, ex) => a + (activeSets[ex]?.length || 0), 0)
       const done = relevant.reduce((a, ex) => a + (activeSets[ex]?.filter((s) => s.done).length || 0), 0)
       return { tot, done }
     }
-    const exNames = getDayExs(dayName)
     const isEdit = editingDay === dayName
-    const { tot, done } = getSessSetCounts(dayName)
+    const { tot, done } = getSessSetCounts()
     const pct = tot > 0 ? Math.round((done / tot) * 100) : 0
     const hasAnyDone = anyDone(dayName)
     const quickAdds = getExLib(dayName)
-      .filter((e) => !exNames.includes(e))
+      .filter((e) => !displayExNames.includes(e))
       .slice(0, 6)
     const getLastForEx = (exName, excludeId, log) => {
       for (const s of log) {
@@ -2276,7 +2291,7 @@ export default function App() {
                   🗑 Remove {dayName} workout
                 </button>
               </div>
-            ) : exNames.length === 0 ? (
+            ) : displayExNames.length === 0 ? (
               <div style={{ padding: '40px 20px', textAlign: 'center' }}>
                 <div style={{ fontSize: 32, marginBottom: 8 }}>🏋️</div>
                 <div style={{ fontSize: 14, color: 'var(--ink3)' }}>
@@ -2286,7 +2301,7 @@ export default function App() {
                 </div>
               </div>
             ) : (
-              exNames.map((ex) => {
+              displayExNames.map((ex) => {
                 const sets = activeSets[ex] || []
                 const exDone = isExDone(ex)
                 const isCollapsed = collapsedDone[ex] && exDone
@@ -2609,7 +2624,13 @@ export default function App() {
                       }
                       const dateMs = today.getTime() - (todayMonIdx - viewIdx) * 86400000
                       const seed = {}
-                      exNames.forEach((ex) => {
+                      // Seed every exercise actually in the saved record too, not just ones
+                      // still in the current template — otherwise an exercise logged that day
+                      // but since removed from the day's template would have no data to show.
+                      const namesToSeed = todaySess
+                        ? [...new Set([...exNames, ...todaySess.exercises.map((e) => e.name)])]
+                        : exNames
+                      namesToSeed.forEach((ex) => {
                         const savedEx = todaySess?.exercises.find((e) => e.name === ex)
                         if (savedEx) {
                           seed[ex] = savedEx.sets.map((s) => ({
