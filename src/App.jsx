@@ -2753,7 +2753,7 @@ export default function App() {
           <div
             className="add-workout-row u2"
             onClick={() => {
-              // obSplit/obExs carry over from onboarding (or a prior Add Workout) and are
+              // obSplit/obExs carry over from onboarding (or a prior Add Program) and are
               // only cleared by the modal's own ✕ button — reset them here too, so opening
               // the modal always starts at the split picker instead of resuming stale state.
               setObSplit(null)
@@ -2763,7 +2763,7 @@ export default function App() {
             }}
           >
             <div style={{ display: 'flex', color: 'var(--ch)' }}>{TI.plus}</div>
-            <span>Add Workout</span>
+            <span>Add Program</span>
           </div>
         </div>
       )}
@@ -2786,7 +2786,7 @@ export default function App() {
               }}
             >
               <div>
-                <div className="modal-title">{obSplit ? 'Pick exercises' : 'Add a workout'}</div>
+                <div className="modal-title">{obSplit ? 'Pick exercises' : 'Add a program'}</div>
                 <div className="modal-sub">
                   {obSplit
                     ? `${obExStep + 1}/${obSplit.days.length} — ${obSplit.days[obExStep]}`
