@@ -1197,15 +1197,21 @@ export default function App() {
             lastW: s.typed && s.w ? s.w : s.lastW,
             lastR: s.typed && s.r ? s.r : s.lastR,
           }))
-        : (activeSets[ex] || []).map((s) => ({
-            ...s,
-            done: false,
-            lastW: s.typed && s.w ? s.w : s.lastW,
-            lastR: s.typed && s.r ? s.r : s.lastR,
-            w: s.typed && s.w ? s.w : s.lastW !== '—' ? s.lastW : '',
-            r: s.typed && s.r ? s.r : s.lastR !== '—' ? s.lastR : '',
-            typed: false,
-          }))
+        : (activeSets[ex] || []).map((s) => {
+            const newW = s.typed && s.w ? s.w : s.lastW !== '—' ? s.lastW : ''
+            const newR = s.typed && s.r ? s.r : s.lastR !== '—' ? s.lastR : ''
+            return {
+              ...s,
+              done: false,
+              lastW: s.typed && s.w ? s.w : s.lastW,
+              lastR: s.typed && s.r ? s.r : s.lastR,
+              w: newW,
+              r: newR,
+              // A pre-filled reference weight should be immediately tickable, same as a
+              // backfilled day or Add Set — not silently blocked by the typed guard.
+              typed: !!newW,
+            }
+          })
       nextWSets[ex] = updatedSets
       if (user) {
         const { error } = await saveWorkoutState(ex, updatedSets)
@@ -2744,7 +2750,18 @@ export default function App() {
               })}
             </div>
           )}
-          <div className="add-workout-row u2" onClick={() => setShowAddWorkout(true)}>
+          <div
+            className="add-workout-row u2"
+            onClick={() => {
+              // obSplit/obExs carry over from onboarding (or a prior Add Workout) and are
+              // only cleared by the modal's own ✕ button — reset them here too, so opening
+              // the modal always starts at the split picker instead of resuming stale state.
+              setObSplit(null)
+              setObExs({})
+              setObExStep(0)
+              setShowAddWorkout(true)
+            }}
+          >
             <div style={{ display: 'flex', color: 'var(--ch)' }}>{TI.plus}</div>
             <span>Add Workout</span>
           </div>
