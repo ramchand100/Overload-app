@@ -2105,7 +2105,6 @@ export default function App() {
   /* ════ SESSION SCREEN ════ */
   if (sessionScreen !== null) {
     const dayName = sessionScreen
-    const isPastEdit = sessionDate !== null
     const completedSess = sessionLog.find(
       (s) => s.dayName === dayName && localDateStr(s.date) === localDateStr(sessionDate ?? Date.now()),
     )
@@ -2155,7 +2154,7 @@ export default function App() {
             (a, b) => ((parseFloat(b.w) || 0) > (parseFloat(a.w) || 0) ? b : a),
             exData.sets[0],
           )
-          return { w: best.w, r: best.r }
+          return { w: best.w, r: best.r, count: exData.sets.length }
         }
       }
       return null
@@ -2163,6 +2162,7 @@ export default function App() {
     const handleReset = async () => {
       const dateMs = sessionDate ?? Date.now()
       const dateKey = localDateStr(dateMs)
+      const isToday = dateKey === localDateStr(Date.now())
       const completed = sessionLog.find(
         (s) => s.dayName === dayName && localDateStr(s.date) === dateKey,
       )
@@ -2180,7 +2180,11 @@ export default function App() {
         const freshSets = {}
         exNames.forEach((ex) => {
           const last = getLastForEx(ex, completed.id, remainingLog)
-          const setCount = (activeSets[ex] || []).length || 1
+          // Follow whichever session is now the most recent for this exercise (after the
+          // deleted one is gone) for the set count too, not just the weight/reps — otherwise
+          // resetting today's session could leave the shared template's set count stuck on
+          // what today's own (now-deleted) session had, instead of the day that's now latest.
+          const setCount = last ? last.count : (activeSets[ex] || []).length || 1
           freshSets[ex] = Array.from({ length: setCount }, () => ({
             w: last ? last.w : '',
             r: last ? last.r : '',
@@ -2192,8 +2196,10 @@ export default function App() {
         })
         // A past-day reset must never touch the shared "last known weights" template —
         // same principle as Finish (see doFinish) — so it only ever writes into the
-        // ephemeral pastEditSets buffer, not the real wSets/workout_state.
-        if (isPastEdit) {
+        // ephemeral pastEditSets buffer, not the real wSets/workout_state. Checked by date
+        // rather than `sessionDate !== null` — reopening today's own already-finished session
+        // also sets sessionDate to a real (but still-today) timestamp.
+        if (!isToday) {
           setPastEditSets((p) => ({ ...p, ...freshSets }))
         } else if (user) {
           for (const ex of exNames) await saveWorkoutState(ex, freshSets[ex])
@@ -2677,13 +2683,16 @@ export default function App() {
                           const setCount = (wSets[ex] || []).length || 1
                           const lastW = wSets[ex]?.[0]?.lastW ?? '—'
                           const lastR = wSets[ex]?.[0]?.lastR ?? '—'
+                          // Pre-fill from the reference numbers, same as Add Set and a fresh
+                          // session after finishing a prior day already do — matches those
+                          // instead of leaving a blank field next to a "Last" reference.
                           seed[ex] = Array.from({ length: setCount }, () => ({
-                            w: '',
-                            r: '',
+                            w: lastW !== '—' ? lastW : '',
+                            r: lastR !== '—' ? lastR : '',
                             done: false,
                             lastW,
                             lastR,
-                            typed: false,
+                            typed: lastW !== '—',
                           }))
                         }
                       })
