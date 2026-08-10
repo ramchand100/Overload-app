@@ -3,8 +3,8 @@ import { useAuth } from './useAuth'
 import { useData } from './useData'
 import { TI } from './icons'
 import { MiniGraph } from './components/MiniGraph'
-import { WeightChart } from './components/WeightChart'
 import { CalendarView } from './components/CalendarView'
+import { BodyHeatmap } from './components/BodyHeatmap'
 import { WheelPicker } from './components/WheelPicker'
 import { exportHistoryPdf } from './exportHistoryPdf'
 
@@ -304,18 +304,8 @@ const S = `
   .cat-tab.on{color:var(--ch);border-bottom-color:var(--ch)}
   /* Strength curve card */
   .str-card{background:var(--white);border:1.5px solid var(--border);border-radius:16px;box-shadow:var(--sh);margin-bottom:8px;overflow:hidden}
-  .str-card-hdr{padding:14px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;gap:10px}
   .str-card-name{font-size:15px;font-weight:700;color:var(--ch)}
   .str-card-sub{font-size:12px;color:var(--ink3);margin-top:2px}
-  .str-card-nums{display:flex;align-items:baseline;gap:6px;font-size:13px;color:var(--ink3);white-space:nowrap}
-  .str-card-body{padding:0 16px 16px;border-top:1px solid var(--border)}
-  .chart-hdr{display:flex;justify-content:space-between;align-items:center;margin:14px 0 8px;font-size:13px}
-  .chart-title{font-weight:700;color:var(--ch)}
-  .chart-delta{font-weight:700;color:var(--green)}
-  .chart-stats-row{display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
-  .chart-stat{text-align:center;flex:1}
-  .chart-stat-lbl{font-size:11px;color:var(--ink3);margin-bottom:2px}
-  .chart-stat-val{font-size:15px;font-weight:800;color:var(--ch)}
   .split-cards-wrap{overflow-x:auto;margin:0 -18px;padding:0 18px}
   .split-cards-wrap::-webkit-scrollbar{display:none}
   .split-cards-row{display:flex;gap:10px;width:max-content}
@@ -826,8 +816,9 @@ export default function App() {
   const toastRef = useRef(null)
   const [progRangeStrength, setProgRangeStrength] = useState('All')
   const [progRangeHistory, setProgRangeHistory] = useState('All')
+  const [progRangeHeat, setProgRangeHeat] = useState('All')
+  const [heatView, setHeatView] = useState('front')
   const [progExCat, setProgExCat] = useState(null)
-  const [expandedStr, setExpStr] = useState({})
 
   // Persist guest data locally so it survives page reloads / OAuth redirects
   useEffect(() => {
@@ -2949,6 +2940,32 @@ export default function App() {
             progRangeStrength
           ]
           const rangeCutoffStrength = Date.now() - rangeDaysStrength * 86400000
+          const rangeDaysHeat = { Week: 7, '1M': 30, '6M': 182, '1Y': 365, All: 100000 }[
+            progRangeHeat
+          ]
+          const rangeCutoffHeat = Date.now() - rangeDaysHeat * 86400000
+          const muscleTagAliases = { Tri: ['Triceps'], Bi: ['Biceps'], Legs: ['Hamstrings', 'Glutes'] }
+          const muscleSets = {}
+          sessionLog.forEach((s) => {
+            if (new Date(s.date).getTime() < rangeCutoffHeat) return
+            s.exercises.forEach((e) => {
+              const tag = MUSCLE_TAGS[e.name]
+              if (!tag) return
+              const doneCount = e.sets.filter((st) => st.done !== false).length
+              tag.split('/').forEach((token) => {
+                const canonical = muscleTagAliases[token] || [token]
+                canonical.forEach((m) => {
+                  muscleSets[m] = (muscleSets[m] || 0) + doneCount
+                })
+              })
+            })
+          })
+          const maxMuscleSets = Math.max(0, ...Object.values(muscleSets))
+          const muscleOpacity = (m) => {
+            const v = muscleSets[m] || 0
+            if (v === 0) return 0
+            return Math.max(0.08, v / maxMuscleSets)
+          }
           const allTrackedExs = [
             ...new Set(sessionLog.flatMap((s) => s.exercises.map((e) => e.name))),
           ].filter((name) => !activeCat || exToCat[name] === activeCat)
@@ -3044,6 +3061,84 @@ export default function App() {
               </div>
 
               <div className="lbl u2" style={{ marginTop: 4 }}>
+                Muscle heatmap
+              </div>
+              <div
+                className="u2"
+                style={{
+                  background: 'var(--white)',
+                  border: '1.5px solid var(--border)',
+                  borderRadius: 16,
+                  padding: '16px',
+                  boxShadow: 'var(--sh)',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    marginBottom: 10,
+                  }}
+                >
+                  <div className="range-pills">
+                    {['front', 'back'].map((v) => (
+                      <div
+                        key={v}
+                        className={`range-pill${heatView === v ? ' on' : ''}`}
+                        onClick={() => setHeatView(v)}
+                      >
+                        {v === 'front' ? 'Front' : 'Back'}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    marginBottom: 12,
+                  }}
+                >
+                  <div className="range-pills">
+                    {['Week', '1M', '6M', '1Y', 'All'].map((r) => (
+                      <div
+                        key={r}
+                        className={`range-pill${progRangeHeat === r ? ' on' : ''}`}
+                        onClick={() => setProgRangeHeat(r)}
+                      >
+                        {r}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <BodyHeatmap view={heatView} opacityFor={muscleOpacity} />
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    marginTop: 12,
+                  }}
+                >
+                  <span style={{ fontSize: 11, color: 'var(--ink3)', fontWeight: 600 }}>Less</span>
+                  {[0.08, 0.35, 0.65, 1].map((op) => (
+                    <div
+                      key={op}
+                      style={{
+                        width: 14,
+                        height: 14,
+                        borderRadius: 4,
+                        background: 'var(--ch)',
+                        opacity: op,
+                      }}
+                    />
+                  ))}
+                  <span style={{ fontSize: 11, color: 'var(--ink3)', fontWeight: 600 }}>More</span>
+                </div>
+              </div>
+
+              <div className="lbl u2" style={{ marginTop: 4 }}>
                 Strength curves
               </div>
               <div
@@ -3109,82 +3204,58 @@ export default function App() {
                   ) : (
                     exWithProgress.map((ex) => {
                       const diff = ex.last - ex.first
-                      const open = !!expandedStr[ex.name]
                       return (
                         <div key={ex.name} className="str-card">
-                          <div
-                            className="str-card-hdr"
-                            onClick={() => setExpStr((p) => ({ ...p, [ex.name]: !p[ex.name] }))}
-                          >
-                            <div>
-                              <div className="str-card-name" style={{ color: 'var(--green)' }}>
-                                {ex.name}
+                          <div style={{ padding: '14px 16px' }}>
+                            <div
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'flex-start',
+                                marginBottom: 10,
+                              }}
+                            >
+                              <div>
+                                <div className="str-card-name" style={{ color: 'var(--ch)' }}>
+                                  {ex.name}
+                                </div>
+                                <div className="str-card-sub">
+                                  {ex.sessions} session{ex.sessions !== 1 ? 's' : ''}
+                                </div>
                               </div>
-                              <div className="str-card-sub">
-                                {ex.sessions} session{ex.sessions !== 1 ? 's' : ''}
-                              </div>
+                              {diff !== 0 && (
+                                <span
+                                  style={{
+                                    background: diff > 0 ? 'var(--green-l)' : 'var(--orange-l)',
+                                    color: diff > 0 ? 'var(--green)' : 'var(--orange)',
+                                    borderRadius: 20,
+                                    padding: '2px 8px',
+                                    fontWeight: 700,
+                                    fontSize: 11,
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  {diff > 0 ? '+' : ''}
+                                  {ex.pct}%
+                                </span>
+                              )}
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <div className="str-card-nums">
-                                <span style={{ color: 'var(--ink3)' }}>{ex.first}</span>{' '}
-                                <span style={{ color: 'var(--ink3)' }}>→</span>{' '}
-                                <b style={{ color: 'var(--ch)', fontSize: 15 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                              <div style={{ flexShrink: 0 }}>
+                                <span style={{ fontSize: 32, fontWeight: 800, color: 'var(--ch)' }}>
                                   {ex.last}
+                                </span>
+                                <span
+                                  style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink3)' }}
+                                >
                                   {units}
-                                </b>
-                                {diff !== 0 && (
-                                  <span
-                                    style={{
-                                      background: diff > 0 ? 'var(--green-l)' : 'var(--orange-l)',
-                                      color: diff > 0 ? 'var(--green)' : 'var(--orange)',
-                                      borderRadius: 20,
-                                      padding: '2px 8px',
-                                      fontWeight: 700,
-                                      fontSize: 11,
-                                      marginLeft: 4,
-                                    }}
-                                  >
-                                    {diff > 0 ? '+' : ''}
-                                    {ex.pct}%
-                                  </span>
-                                )}
-                              </div>
-                              <span className={`hist-sess-chev${open ? ' open' : ''}`}>▼</span>
-                            </div>
-                          </div>
-                          {open && (
-                            <div className="str-card-body">
-                              <div className="chart-hdr">
-                                <span className="chart-title">Weight progression</span>
-                                <span className="chart-delta">
-                                  {diff >= 0 ? '+' : ''}
-                                  {diff}
-                                  {units} / {ex.sessions} session{ex.sessions !== 1 ? 's' : ''}
                                 </span>
                               </div>
-                              <WeightChart points={ex.series} />
-                              <div className="chart-stats-row">
-                                <div className="chart-stat">
-                                  <div className="chart-stat-lbl">Started</div>
-                                  <div className="chart-stat-val">
-                                    {ex.first}
-                                    {units}
-                                  </div>
-                                </div>
-                                <div className="chart-stat">
-                                  <div className="chart-stat-lbl">Sessions</div>
-                                  <div className="chart-stat-val">{ex.sessions}</div>
-                                </div>
-                                <div className="chart-stat">
-                                  <div className="chart-stat-lbl">Current max</div>
-                                  <div className="chart-stat-val" style={{ color: 'var(--green)' }}>
-                                    {ex.last}
-                                    {units}
-                                  </div>
-                                </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <MiniGraph data={ex.series.map((p) => ({ kg: p.weight }))} />
                               </div>
                             </div>
-                          )}
+                          </div>
                         </div>
                       )
                     })
